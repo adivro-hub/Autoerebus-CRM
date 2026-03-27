@@ -29,7 +29,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   try {
     const [vehicles, leads, deals, services, revenue] = await Promise.all([
-      prisma.vehicle.count({ where: { status: "AVAILABLE", ...brandWhere } }),
+      prisma.vehicle.count({ where: { status: "IN_STOCK", ...brandWhere } }),
       prisma.lead.count({
         where: {
           status: { in: ["NEW", "CONTACTED", "QUALIFIED", "NEGOTIATION"] },

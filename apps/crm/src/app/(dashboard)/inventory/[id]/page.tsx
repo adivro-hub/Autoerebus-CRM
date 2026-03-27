@@ -32,11 +32,8 @@ interface PageProps {
 export default async function VehicleDetailPage({ params }: PageProps) {
   const { id } = await params;
 
-  let vehicle: Awaited<ReturnType<typeof prisma.vehicle.findUnique>> & {
-    make: { name: string };
-    model: { name: string };
-    images: Array<{ id: string; url: string; alt: string | null; order: number }>;
-  } | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let vehicle: any = null;
 
   try {
     vehicle = await prisma.vehicle.findUnique({
@@ -46,7 +43,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
         model: { select: { name: true } },
         images: { orderBy: { order: "asc" } },
       },
-    }) as typeof vehicle;
+    });
   } catch {
     notFound();
   }
@@ -136,7 +133,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
           <CardContent>
             {vehicle.images.length > 0 ? (
               <div className="grid grid-cols-3 gap-2">
-                {vehicle.images.map((img) => (
+                {vehicle.images.map((img: { id: string; url: string; alt: string | null }) => (
                   <div
                     key={img.id}
                     className="aspect-video overflow-hidden rounded-md bg-muted"
@@ -195,7 +192,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {vehicle.features.map((feature) => (
+              {vehicle.features.map((feature: string) => (
                 <Badge key={feature} variant="secondary">
                   {feature}
                 </Badge>

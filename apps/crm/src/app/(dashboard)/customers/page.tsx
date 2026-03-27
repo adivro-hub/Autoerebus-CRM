@@ -55,7 +55,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       ];
     }
 
-    [customers, total] = await Promise.all([
+    const [customersResult, totalResult] = await Promise.all([
       prisma.customer.findMany({
         where,
         include: {
@@ -66,9 +66,11 @@ export default async function CustomersPage({ searchParams }: PageProps) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-      }) as typeof customers & Promise<typeof customers>,
+      }),
       prisma.customer.count({ where }),
     ]);
+    customers = customersResult as typeof customers;
+    total = totalResult;
   } catch {
     // DB not available
   }

@@ -51,7 +51,7 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
     }
     if (params.status) where.status = params.status;
 
-    claims = await prisma.claim.findMany({
+    const claimsResult = await prisma.claim.findMany({
       where,
       include: {
         customer: { select: { firstName: true, lastName: true } },
@@ -65,7 +65,8 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
         assignedTo: { select: { firstName: true, lastName: true } },
       },
       orderBy: { createdAt: "desc" },
-    }) as typeof claims;
+    });
+    claims = claimsResult as unknown as typeof claims;
   } catch {
     // DB not available
   }

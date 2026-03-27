@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { type NextAuthResult } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -10,7 +10,7 @@ const loginSchema = z.object({
   password: z.string().min(6, "Parola trebuie sa aiba minim 6 caractere"),
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const nextAuth: NextAuthResult = NextAuth({
   ...authConfig,
   secret: process.env.NEXTAUTH_SECRET,
   session: {
@@ -60,6 +60,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 });
+
+export const handlers: NextAuthResult["handlers"] = nextAuth.handlers;
+export const auth: NextAuthResult["auth"] = nextAuth.auth;
+export const signIn: NextAuthResult["signIn"] = nextAuth.signIn;
+export const signOut: NextAuthResult["signOut"] = nextAuth.signOut;
 
 // Extend next-auth types
 declare module "next-auth" {

@@ -51,7 +51,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
       where.brand = params.brand;
     }
 
-    stages = await prisma.pipelineStage.findMany({
+    const stagesResult = await prisma.pipelineStage.findMany({
       where,
       orderBy: { order: "asc" },
       include: {
@@ -73,7 +73,8 @@ export default async function SalesPage({ searchParams }: PageProps) {
           orderBy: { updatedAt: "desc" },
         },
       },
-    }) as typeof stages;
+    });
+    stages = stagesResult as unknown as typeof stages;
   } catch {
     // Use default stages if DB unavailable
     stages = SALES_PIPELINE_STAGES.map((s) => ({

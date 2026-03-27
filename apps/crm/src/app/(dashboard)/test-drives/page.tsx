@@ -49,7 +49,7 @@ export default async function TestDrivesPage({ searchParams }: PageProps) {
       where.scheduledAt = { gte: date, lt: nextDay };
     }
 
-    testDrives = await prisma.testDrive.findMany({
+    const testDrivesResult = await prisma.testDrive.findMany({
       where,
       include: {
         customer: { select: { firstName: true, lastName: true, phone: true } },
@@ -63,7 +63,8 @@ export default async function TestDrivesPage({ searchParams }: PageProps) {
         agent: { select: { firstName: true, lastName: true } },
       },
       orderBy: { scheduledAt: "asc" },
-    }) as typeof testDrives;
+    });
+    testDrives = testDrivesResult as unknown as typeof testDrives;
   } catch {
     // DB not available
   }

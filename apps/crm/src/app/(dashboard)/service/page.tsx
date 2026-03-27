@@ -50,7 +50,7 @@ export default async function ServicePage({ searchParams }: PageProps) {
     if (params.brand && params.brand !== "ALL") where.brand = params.brand;
     if (params.status) where.status = params.status;
 
-    [orders, total] = await Promise.all([
+    const [ordersResult, totalResult] = await Promise.all([
       prisma.serviceOrder.findMany({
         where,
         include: {
@@ -67,9 +67,11 @@ export default async function ServicePage({ searchParams }: PageProps) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
-      }) as typeof orders,
+      }),
       prisma.serviceOrder.count({ where }),
     ]);
+    orders = ordersResult as unknown as typeof orders;
+    total = totalResult;
   } catch {
     // DB not available
   }
