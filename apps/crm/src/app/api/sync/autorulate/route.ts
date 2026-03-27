@@ -142,13 +142,13 @@ export async function GET() {
       select: { id: true, vin: true, autovitId: true, updatedAt: true },
     });
 
-    const existingByVin = new Map(
-      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v])
+    const existingByVin = new Map<string, ExistingVehicle>(
+      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v] as [string, ExistingVehicle])
     );
-    const existingByAutorutaleId = new Map(
+    const existingByAutorutaleId = new Map<string, ExistingVehicle>(
       existingVehicles
         .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
-        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v])
+        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v] as [string, ExistingVehicle])
     );
 
     const newCars: AutorutaleCar[] = [];
@@ -274,13 +274,13 @@ export async function POST(request: NextRequest) {
       select: { id: true, vin: true, autovitId: true, updatedAt: true },
     });
 
-    const existingByVin = new Map(
-      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v])
+    const existingByVin = new Map<string, ExistingVehicle>(
+      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v] as [string, ExistingVehicle])
     );
-    const existingByAutorutaleId = new Map(
+    const existingByAutorutaleId = new Map<string, ExistingVehicle>(
       existingVehicles
         .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
-        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v])
+        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v] as [string, ExistingVehicle])
     );
 
     let imported = 0;
