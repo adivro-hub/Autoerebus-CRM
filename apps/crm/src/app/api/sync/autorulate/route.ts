@@ -9,6 +9,8 @@ import {
   type AutorutaleCar,
 } from "@/lib/autorulate-db";
 
+type ExistingVehicle = { id: string; vin: string | null; autovitId: string | null; updatedAt: Date };
+
 // ─── Field Mappings ─────────────────────────────────────
 
 function mapFuelType(fuel: string): string {
@@ -141,12 +143,12 @@ export async function GET() {
     });
 
     const existingByVin = new Map(
-      existingVehicles.filter((v) => v.vin).map((v) => [v.vin!, v])
+      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v])
     );
     const existingByAutorutaleId = new Map(
       existingVehicles
-        .filter((v) => v.autovitId?.startsWith("autorulate:"))
-        .map((v) => [v.autovitId!.replace("autorulate:", ""), v])
+        .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
+        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v])
     );
 
     const newCars: AutorutaleCar[] = [];
@@ -273,12 +275,12 @@ export async function POST(request: NextRequest) {
     });
 
     const existingByVin = new Map(
-      existingVehicles.filter((v) => v.vin).map((v) => [v.vin!, v])
+      existingVehicles.filter((v: ExistingVehicle) => v.vin).map((v: ExistingVehicle) => [v.vin!, v])
     );
     const existingByAutorutaleId = new Map(
       existingVehicles
-        .filter((v) => v.autovitId?.startsWith("autorulate:"))
-        .map((v) => [v.autovitId!.replace("autorulate:", ""), v])
+        .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
+        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v])
     );
 
     let imported = 0;
