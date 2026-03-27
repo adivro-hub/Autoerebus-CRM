@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@autoerebus/database";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";

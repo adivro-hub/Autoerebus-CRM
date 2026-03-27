@@ -3,7 +3,16 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "DATABASE_URL",
+        "AUTORULATE_DATABASE_URL",
+        "NEXTAUTH_SECRET",
+        "NEXTAUTH_URL",
+        "CLOUDINARY_CLOUD_NAME",
+        "CLOUDINARY_API_KEY",
+        "CLOUDINARY_API_SECRET"
+      ]
     },
     "dev": {
       "cache": false,

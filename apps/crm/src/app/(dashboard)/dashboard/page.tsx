@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/components/card";
