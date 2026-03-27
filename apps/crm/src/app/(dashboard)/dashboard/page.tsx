@@ -75,7 +75,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       include: { user: { select: { firstName: true, lastName: true } } },
     });
 
-    recentActivities = activities.map((a) => ({
+    recentActivities = activities.map((a: { id: string; action: string; entity: string; entityId: string | null; createdAt: Date; user: { firstName: string; lastName: string } | null }) => ({
       id: a.id,
       text: `${a.action}: ${a.entity} ${a.entityId ? `#${a.entityId.slice(-6)}` : ""}${a.user ? ` - ${a.user.firstName} ${a.user.lastName}` : ""}`,
       time: a.createdAt,
