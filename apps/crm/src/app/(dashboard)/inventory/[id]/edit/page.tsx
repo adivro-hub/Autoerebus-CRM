@@ -1,0 +1,563 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/components/card";
+import { Button } from "@autoerebus/ui/components/button";
+import { Input } from "@autoerebus/ui/components/input";
+import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS, BRAND_LABELS } from "@autoerebus/types";
+import { ArrowLeft, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
+
+const CONDITION_OPTIONS = [
+  { value: "NEW", label: "Nou" },
+  { value: "USED", label: "Second-hand" },
+  { value: "DEMO", label: "Demo" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "IN_TRANSIT", label: "In Tranzit" },
+  { value: "IN_STOCK", label: "In Stoc" },
+  { value: "RESERVED", label: "Rezervat" },
+  { value: "SOLD", label: "Vandut" },
+];
+
+interface MakeOption {
+  id: string;
+  name: string;
+  models: { id: string; name: string }[];
+}
+
+interface UserOption {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+interface PropertyOption {
+  id: string;
+  category: string;
+  value: string;
+  label: string;
+}
+
+interface VehicleData {
+  id: string;
+  title: string | null;
+  vin: string | null;
+  makeId: string;
+  modelId: string;
+  year: number;
+  mileage: number;
+  fuelType: string;
+  transmission: string;
+  bodyType: string | null;
+  drivetrain: string | null;
+  engineSize: number | null;
+  horsepower: number | null;
+  emissions: number | null;
+  batteryCapacity: number | null;
+  wltpRange: number | null;
+  color: string | null;
+  interiorColor: string | null;
+  doors: number | null;
+  seats: number | null;
+  price: number;
+  discountPrice: number | null;
+  currency: string;
+  vatDeductible: boolean;
+  availableFinancing: boolean;
+  condition: string;
+  status: string;
+  brand: string;
+  description: string | null;
+  features: string[];
+  availableTestDrive: boolean;
+  specialBadge: boolean;
+  specialBadgeText: string | null;
+  agentId: string | null;
+  images: { id: string; url: string; cloudinaryId: string | null; order: number }[];
+}
+
+export default function EditVehiclePage() {
+  const router = useRouter();
+  const params = useParams();
+  const id = params.id as string;
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [vehicle, setVehicle] = useState<VehicleData | null>(null);
+  const [images, setImages] = useState<UploadedImage[]>([]);
+  const [makes, setMakes] = useState<MakeOption[]>([]);
+  const [selectedMakeId, setSelectedMakeId] = useState("");
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [models, setModels] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<UserOption[]>([]);
+  const [bodyTypes, setBodyTypes] = useState<PropertyOption[]>([]);
+  const [conditions, setConditions] = useState<PropertyOption[]>([]);
+  const [fuelType, setFuelType] = useState("BENZINA");
+  const [specialBadge, setSpecialBadge] = useState(false);
+
+  // Load vehicle + reference data
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/vehicles/${id}`).then((r) => r.json()),
+      fetch("/api/makes").then((r) => r.json()),
+      fetch("/api/users").then((r) => r.json()),
+      fetch("/api/properties?category=bodyType").then((r) => r.json()),
+      fetch("/api/properties?category=condition").then((r) => r.json()),
+    ]).then(([vehicleData, makesData, usersData, bodyData, conditionData]) => {
+      if (vehicleData.success && vehicleData.data) {
+        const v = vehicleData.data;
+        setVehicle(v);
+        setSelectedMakeId(v.makeId);
+        setSelectedModelId(v.modelId);
+        setFuelType(v.fuelType);
+        setSpecialBadge(v.specialBadge);
+        setImages(
+          (v.images || []).map((img: any) => ({
+            url: img.url,
+            cloudinaryId: img.cloudinaryId || "",
+            order: img.order,
+          }))
+        );
+      }
+      if (makesData.success) setMakes(makesData.data);
+      if (usersData.success) setUsers(usersData.data);
+      if (bodyData.success) setBodyTypes(bodyData.data);
+      if (conditionData.success) setConditions(conditionData.data);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, [id]);
+
+  // Update models when make changes
+  useEffect(() => {
+    const make = makes.find((m) => m.id === selectedMakeId);
+    setModels(make?.models ?? []);
+  }, [selectedMakeId, makes]);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setError("");
+    setSuccess(false);
+
+    const formData = new FormData(e.currentTarget);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+      const response = await fetch(`/api/vehicles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...data,
+          year: parseInt(data.year as string, 10),
+          mileage: parseInt(data.mileage as string, 10) || 0,
+          price: parseFloat(data.price as string),
+          discountPrice: data.discountPrice ? parseFloat(data.discountPrice as string) : null,
+          horsepower: data.horsepower ? parseInt(data.horsepower as string, 10) : null,
+          engineSize: data.engineSize ? parseFloat(data.engineSize as string) : null,
+          doors: data.doors ? parseInt(data.doors as string, 10) : null,
+          seats: data.seats ? parseInt(data.seats as string, 10) : null,
+          emissions: data.emissions ? parseInt(data.emissions as string, 10) : null,
+          batteryCapacity: data.batteryCapacity ? parseFloat(data.batteryCapacity as string) : null,
+          wltpRange: data.wltpRange ? parseInt(data.wltpRange as string, 10) : null,
+          vatDeductible: data.vatDeductible === "on",
+          availableFinancing: data.availableFinancing === "on",
+          availableTestDrive: data.availableTestDrive === "on",
+          specialBadge: data.specialBadge === "on",
+          specialBadgeText: data.specialBadgeText || null,
+          agentId: data.agentId || null,
+          images: images.map((img) => ({
+            url: img.url,
+            cloudinaryId: img.cloudinaryId,
+            order: img.order,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || "Eroare la salvare");
+      }
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Eroare la salvare");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!vehicle) {
+    return (
+      <div className="py-20 text-center text-muted-foreground">
+        Vehiculul nu a fost gasit.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <Link href={`/inventory/${id}`}>
+          <Button variant="ghost" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="font-heading text-2xl font-bold">Editeaza Vehicul</h1>
+          <p className="text-sm text-muted-foreground">
+            {vehicle.brand} - Modificati datele vehiculului
+          </p>
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6" key={vehicle.id} id="edit-vehicle-form">
+        {/* Basic Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Informatii de Baza</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="sm:col-span-2 lg:col-span-3">
+                <Input label="Titlu" name="title" defaultValue={vehicle.title ?? ""} placeholder="Ex: Nissan Qashqai e-POWER Tekna+ 2025" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Brand *</label>
+                <select
+                  name="brand"
+                  required
+                  defaultValue={vehicle.brand}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {Object.entries(BRAND_LABELS)
+                    .filter(([key]) => key !== "SERVICE")
+                    .map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Marca *</label>
+                <select
+                  name="makeId"
+                  required
+                  value={selectedMakeId}
+                  onChange={(e) => setSelectedMakeId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza marca</option>
+                  {makes.map((make) => (
+                    <option key={make.id} value={make.id}>{make.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Model *</label>
+                <select
+                  name="modelId"
+                  required
+                  value={selectedModelId}
+                  onChange={(e) => setSelectedModelId(e.target.value)}
+                  disabled={!selectedMakeId}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza model</option>
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id}>{model.name}</option>
+                  ))}
+                </select>
+              </div>
+              <Input label="An *" name="year" type="number" min={1990} max={2030} defaultValue={vehicle.year} required />
+              <Input label="VIN" name="vin" defaultValue={vehicle.vin ?? ""} placeholder="Ex: WVWZZZ3CZWE123456" />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Stare *</label>
+                <select
+                  name="condition"
+                  required
+                  defaultValue={vehicle.condition}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {conditions.length > 0
+                    ? conditions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))
+                    : CONDITION_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Disponibilitate *</label>
+                <select
+                  name="status"
+                  required
+                  defaultValue={vehicle.status}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Agent Responsabil</label>
+                <select
+                  name="agentId"
+                  defaultValue={vehicle.agentId ?? ""}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Fara agent</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} ({user.role})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="mt-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="availableTestDrive"
+                  defaultChecked={vehicle.availableTestDrive}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Disponibil pentru Test Drive
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Images */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Imagini</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ImageUploader images={images} onChange={setImages} />
+          </CardContent>
+        </Card>
+
+        {/* Technical Specs */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Specificatii Tehnice</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Tip Caroserie</label>
+                <select
+                  name="bodyType"
+                  defaultValue={vehicle.bodyType ?? ""}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza</option>
+                  {bodyTypes.map((bt) => (
+                    <option key={bt.id} value={bt.value}>{bt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Combustibil *</label>
+                <select
+                  name="fuelType"
+                  required
+                  value={fuelType}
+                  onChange={(e) => setFuelType(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {Object.entries(FUEL_TYPE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Transmisie *</label>
+                <select
+                  name="transmission"
+                  required
+                  defaultValue={vehicle.transmission}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  {Object.entries(TRANSMISSION_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              <Input label="Kilometraj *" name="mileage" type="number" min={0} defaultValue={vehicle.mileage} required />
+              <Input label="Putere (CP)" name="horsepower" type="number" defaultValue={vehicle.horsepower ?? ""} />
+              {fuelType !== "ELECTRIC" && (
+                <Input label="Cilindree (cm³)" name="engineSize" type="number" defaultValue={vehicle.engineSize ?? ""} />
+              )}
+              {(fuelType === "ELECTRIC" || fuelType === "PHEV") && (
+                <>
+                  <Input label="Capacitate Baterie (kWh)" name="batteryCapacity" type="number" step="0.1" defaultValue={vehicle.batteryCapacity ?? ""} />
+                  <Input
+                    label={fuelType === "PHEV" ? "Autonomie Electrica WLTP (km)" : "Autonomie WLTP (km)"}
+                    name="wltpRange"
+                    type="number"
+                    defaultValue={vehicle.wltpRange ?? ""}
+                  />
+                </>
+              )}
+              <Input label="Emisii CO2 (g/km)" name="emissions" type="number" defaultValue={vehicle.emissions ?? ""} />
+              <Input label="Culoare" name="color" defaultValue={vehicle.color ?? ""} />
+              <Input label="Interior" name="interiorColor" defaultValue={vehicle.interiorColor ?? ""} />
+              <Input label="Usi" name="doors" type="number" min={2} max={5} defaultValue={vehicle.doors ?? ""} />
+              <Input label="Locuri" name="seats" type="number" min={2} max={9} defaultValue={vehicle.seats ?? ""} />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pricing */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Pret</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <Input label="Pret *" name="price" type="number" step="0.01" min={0} defaultValue={vehicle.price} required />
+              <Input label="Pret Promotional" name="discountPrice" type="number" step="0.01" min={0} defaultValue={vehicle.discountPrice ?? ""} />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Moneda</label>
+                <select
+                  name="currency"
+                  defaultValue={vehicle.currency}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="EUR">EUR</option>
+                  <option value="RON">RON</option>
+                </select>
+              </div>
+            </div>
+            <div className="mt-4 flex gap-6">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="vatDeductible"
+                  defaultChecked={vehicle.vatDeductible}
+                  className="h-4 w-4 rounded border-input"
+                />
+                TVA Deductibil
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="availableFinancing"
+                  defaultChecked={vehicle.availableFinancing}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Disponibil pentru Finantare
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Special Badge */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Badge Special</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                name="specialBadge"
+                checked={specialBadge}
+                onChange={(e) => setSpecialBadge(e.target.checked)}
+                className="h-4 w-4 rounded border-input"
+              />
+              Afiseaza badge special pe acest vehicul
+            </label>
+            {specialBadge && (
+              <div className="mt-3">
+                <Input
+                  label="Text Badge"
+                  name="specialBadgeText"
+                  defaultValue={vehicle.specialBadgeText ?? ""}
+                  placeholder="Ex: Oferta Limitata, Pret Redus, Nou in Stoc"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Description */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Descriere</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              name="description"
+              rows={4}
+              defaultValue={vehicle.description ?? ""}
+              placeholder="Descriere vehicul..."
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Spacer for sticky bar */}
+        <div className="h-20" />
+      </form>
+
+      {/* Sticky Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="flex items-center justify-end gap-3 px-6 py-3">
+          {success && (
+            <div className="mr-auto flex items-center gap-2 text-sm font-medium text-green-600">
+              <CheckCircle2 className="h-4 w-4" />
+              Salvat cu succes
+            </div>
+          )}
+          <Link href={`/inventory/${id}`}>
+            <Button variant="outline" type="button">
+              Anuleaza
+            </Button>
+          </Link>
+          <Button type="submit" disabled={saving} form="edit-vehicle-form">
+            <Save className="h-4 w-4" />
+            {saving ? "Se salveaza..." : "Salveaza Modificarile"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Success Toast */}
+      {success && (
+        <div className="fixed right-6 top-20 z-50 animate-in slide-in-from-top-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 shadow-lg">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-green-600" />
+            <p className="text-sm font-medium text-green-900">
+              Modificarile au fost salvate cu succes
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

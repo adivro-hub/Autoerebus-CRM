@@ -1,0 +1,32 @@
+{
+  "name": "autoerebus-crm",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:migrate": "turbo db:migrate --filter=@autoerebus/database",
+    "db:seed": "turbo db:seed --filter=@autoerebus/database",
+    "db:studio": "turbo db:studio --filter=@autoerebus/database"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0"
+  },
+  "packageManager": "npm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "@prisma/adapter-neon": "^7.5.0",
+    "@types/ws": "^8.18.1",
+    "cloudinary": "^2.9.0",
+    "ws": "^8.20.0"
+  }
+}

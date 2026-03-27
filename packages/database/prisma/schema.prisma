@@ -1,0 +1,647 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  AGENT
+  RECEPTION
+}
+
+enum Brand {
+  NISSAN
+  RENAULT
+  AUTORULATE
+  SERVICE
+}
+
+enum VehicleStatus {
+  IN_TRANSIT
+  IN_STOCK
+  RESERVED
+  SOLD
+}
+
+enum VehicleCondition {
+  NEW
+  USED
+  DEMO
+}
+
+enum FuelType {
+  BENZINA
+  DIESEL
+  HYBRID
+  ELECTRIC
+  GPL
+  PHEV
+}
+
+enum TransmissionType {
+  MANUALA
+  AUTOMATA
+}
+
+enum LeadSource {
+  WEBSITE_NISSAN
+  WEBSITE_RENAULT
+  WEBSITE_AUTORULATE
+  WEBSITE_SERVICE
+  PHONE
+  WALK_IN
+  REFERRAL
+  AUTOVIT
+  FACEBOOK
+  GOOGLE_ADS
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum DealStage {
+  PROSPECT
+  QUALIFICATION
+  PROPOSAL
+  NEGOTIATION
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  SMS
+  MEETING
+  NOTE
+  TEST_DRIVE
+  DOCUMENT
+}
+
+enum ServiceOrderStatus {
+  SCHEDULED
+  RECEIVED
+  IN_PROGRESS
+  WAITING_PARTS
+  COMPLETED
+  DELIVERED
+  CANCELLED
+}
+
+enum ClaimStatus {
+  OPENED
+  DOCUMENTS_PENDING
+  UNDER_REVIEW
+  APPROVED
+  IN_REPAIR
+  COMPLETED
+  REJECTED
+  CLOSED
+}
+
+enum TestDriveStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum NotificationType {
+  LEAD_NEW
+  LEAD_ASSIGNED
+  DEAL_STAGE_CHANGED
+  SERVICE_STATUS_CHANGED
+  CLAIM_STATUS_CHANGED
+  TEST_DRIVE_SCHEDULED
+  TEST_DRIVE_REMINDER
+  APPOINTMENT_REMINDER
+  SYSTEM
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  COMPANY
+}
+
+// ─── USERS & AUTH ───────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String?
+  avatar        String?
+  role          UserRole @default(AGENT)
+  brands        Brand[]
+  permissions   String[]
+  active        Boolean  @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  assignedVehicles    Vehicle[]       @relation("VehicleAgent")
+  assignedLeads       Lead[]          @relation("AssignedAgent")
+  assignedDeals       Deal[]          @relation("DealAgent")
+  assignedServices    ServiceOrder[]  @relation("ServiceAgent")
+  assignedClaims      Claim[]         @relation("ClaimAgent")
+  assignedTestDrives  TestDrive[]     @relation("TestDriveAgent")
+  activities          Activity[]
+  notifications       Notification[]
+  customerNotes       CustomerNote[]
+  auditLogs           AuditLog[]
+  sessions            Session[]
+
+  @@index([role])
+  @@index([active])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ─── CUSTOMERS ──────────────────────────────────────────
+
+model Customer {
+  id           String       @id @default(cuid())
+  firstName    String
+  lastName     String
+  email        String?
+  phone        String?
+  company      String?
+  cui          String?      // Romanian company tax ID
+  type         CustomerType @default(INDIVIDUAL)
+  source       LeadSource?
+  gdprConsent  Boolean      @default(false)
+  gdprDate     DateTime?
+  address      String?
+  city         String?
+  county       String?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  // Relations
+  leads         Lead[]
+  serviceOrders ServiceOrder[]
+  claims        Claim[]
+  testDrives    TestDrive[]
+  customerNotes CustomerNote[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([type])
+}
+
+model CustomerNote {
+  id         String   @id @default(cuid())
+  customerId String
+  userId     String
+  content    String
+  createdAt  DateTime @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([customerId])
+}
+
+// ─── VEHICLES / INVENTORY ───────────────────────────────
+
+model Make {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  slug   String  @unique
+  logo   String?
+  order  Int     @default(0)
+
+  models   VehicleModel[]
+  vehicles Vehicle[]
+}
+
+model VehicleModel {
+  id     String @id @default(cuid())
+  name   String
+  slug   String
+  makeId String
+
+  make     Make      @relation(fields: [makeId], references: [id])
+  vehicles Vehicle[]
+
+  @@unique([makeId, slug])
+}
+
+model CarPropertyOption {
+  id       String  @id @default(cuid())
+  category String  // bodyType, fuelType, transmission, drivetrain, color, interiorColor, features
+  value    String
+  label    String
+  order    Int     @default(0)
+  active   Boolean @default(true)
+
+  @@unique([category, value])
+  @@index([category, active])
+}
+
+model Vehicle {
+  id               String           @id @default(cuid())
+  title            String?
+  vin              String?          @unique
+  makeId           String
+  modelId          String
+  year             Int
+  mileage          Int              @default(0)
+  fuelType         FuelType
+  transmission     TransmissionType
+  bodyType         String?
+  drivetrain       String?
+  engineSize       Float?
+  horsepower       Int?
+  emissions        Int?
+  batteryCapacity  Float?           // kWh - for ELECTRIC and PHEV
+  wltpRange        Int?             // km - electric range (WLTP)
+  color            String?
+  interiorColor    String?
+  doors            Int?
+  seats            Int?
+  // Pricing
+  price            Float
+  discountPrice    Float?
+  currency         String           @default("EUR")
+  vatDeductible    Boolean          @default(false)
+  availableFinancing Boolean        @default(false)
+
+  condition        VehicleCondition @default(USED)
+  status           VehicleStatus    @default(IN_STOCK)
+  brand            Brand
+  description      String?
+  features         String[]
+  registrationDate DateTime?
+  previousOwners   Int?
+  featured         Boolean          @default(false)
+
+  // Test drive
+  availableTestDrive Boolean        @default(false)
+
+  // Special badge
+  specialBadge     Boolean          @default(false)
+  specialBadgeText String?
+
+  // Agent assignment
+  agentId          String?
+
+  // External sync
+  externalSlug     String?
+  autovitId        String?
+  autovitSyncedAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  make          Make           @relation(fields: [makeId], references: [id])
+  model         VehicleModel   @relation(fields: [modelId], references: [id])
+  agent         User?          @relation("VehicleAgent", fields: [agentId], references: [id])
+  images        VehicleImage[]
+  leads         Lead[]
+  serviceOrders ServiceOrder[]
+  claims        Claim[]
+  testDrives    TestDrive[]
+  demoCar       DemoCar?
+
+  @@index([brand])
+  @@index([status])
+  @@index([price])
+  @@index([year])
+  @@index([condition])
+  @@index([featured])
+  @@index([agentId])
+}
+
+model VehicleImage {
+  id           String @id @default(cuid())
+  vehicleId    String
+  url          String
+  cloudinaryId String?
+  alt          String?
+  order        Int    @default(0)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+}
+
+// ─── SALES PIPELINE ─────────────────────────────────────
+
+model PipelineStage {
+  id           String @id @default(cuid())
+  name         String
+  order        Int
+  brand        Brand?
+  pipelineType String // SALES, SERVICE, CLAIMS
+  color        String @default("#6B7280")
+  isDefault    Boolean @default(false)
+
+  deals Deal[]
+
+  @@unique([name, brand, pipelineType])
+  @@index([pipelineType, brand])
+}
+
+model Lead {
+  id          String     @id @default(cuid())
+  customerId  String
+  vehicleId   String?
+  source      LeadSource @default(OTHER)
+  brand       Brand
+  status      LeadStatus @default(NEW)
+  assignedToId String?
+  priority     Int       @default(0) // 0=normal, 1=high, 2=urgent
+  notes       String?
+  lostReason  String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  vehicle    Vehicle?    @relation(fields: [vehicleId], references: [id])
+  assignedTo User?       @relation("AssignedAgent", fields: [assignedToId], references: [id])
+  deals      Deal[]
+  activities Activity[]
+
+  @@index([brand])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+model Deal {
+  id                String    @id @default(cuid())
+  leadId            String
+  stageId           String
+  value             Float?
+  currency          String    @default("EUR")
+  probability       Int       @default(0) // 0-100
+  expectedCloseDate DateTime?
+  actualCloseDate   DateTime?
+  brand             Brand
+  assignedToId      String?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  lead       Lead          @relation(fields: [leadId], references: [id])
+  stage      PipelineStage @relation(fields: [stageId], references: [id])
+  assignedTo User?         @relation("DealAgent", fields: [assignedToId], references: [id])
+  activities Activity[]
+
+  @@index([brand])
+  @@index([stageId])
+  @@index([assignedToId])
+}
+
+model Activity {
+  id        String       @id @default(cuid())
+  type      ActivityType
+  content   String
+  leadId    String?
+  dealId    String?
+  userId    String
+  metadata  Json?
+  createdAt DateTime     @default(now())
+
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  deal Deal? @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([dealId])
+  @@index([createdAt])
+}
+
+// ─── SERVICE MODULE ─────────────────────────────────────
+
+model ServiceOrder {
+  id            String             @id @default(cuid())
+  orderNumber   String             @unique @default(cuid())
+  customerId    String
+  vehicleId     String?
+  status        ServiceOrderStatus @default(SCHEDULED)
+  type          String?            // ITP, Revizie, Reparatie, etc.
+  description   String?
+  assignedToId  String?
+  scheduledDate DateTime?
+  receivedDate  DateTime?
+  completedDate DateTime?
+  deliveredDate DateTime?
+  estimatedCost Float?
+  actualCost    Float?
+  currency      String             @default("EUR")
+  brand         Brand              @default(SERVICE)
+  notes         String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  // Relations
+  customer   Customer @relation(fields: [customerId], references: [id])
+  vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
+  assignedTo User?    @relation("ServiceAgent", fields: [assignedToId], references: [id])
+
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([assignedToId])
+}
+
+// ─── CLAIMS (DAUNE) MODULE ──────────────────────────────
+
+model Claim {
+  id               String      @id @default(cuid())
+  claimNumber      String      @unique @default(cuid())
+  customerId       String
+  vehicleId        String?
+  insuranceCompany String?
+  policyNumber     String?
+  status           ClaimStatus @default(OPENED)
+  description      String?
+  incidentDate     DateTime?
+  estimatedCost    Float?
+  actualCost       Float?
+  currency         String      @default("EUR")
+  assignedToId     String?
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  // Relations
+  customer   Customer        @relation(fields: [customerId], references: [id])
+  vehicle    Vehicle?        @relation(fields: [vehicleId], references: [id])
+  assignedTo User?           @relation("ClaimAgent", fields: [assignedToId], references: [id])
+  documents  ClaimDocument[]
+
+  @@index([status])
+  @@index([assignedToId])
+}
+
+model ClaimDocument {
+  id        String   @id @default(cuid())
+  claimId   String
+  name      String
+  url       String
+  type      String?  // photo, report, invoice, etc.
+  size      Int?
+  createdAt DateTime @default(now())
+
+  claim Claim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@index([claimId])
+}
+
+// ─── TEST DRIVE / DEMO CAR ──────────────────────────────
+
+model TestDrive {
+  id           String          @id @default(cuid())
+  customerId   String
+  vehicleId    String
+  scheduledAt  DateTime
+  duration     Int             @default(30) // minutes
+  status       TestDriveStatus @default(SCHEDULED)
+  brand        Brand
+  agentId      String?
+  notes        String?
+  feedback     String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  // Relations
+  customer Customer @relation(fields: [customerId], references: [id])
+  vehicle  Vehicle  @relation(fields: [vehicleId], references: [id])
+  agent    User?    @relation("TestDriveAgent", fields: [agentId], references: [id])
+
+  @@index([scheduledAt])
+  @@index([brand])
+  @@index([status])
+}
+
+model DemoCar {
+  id            String   @id @default(cuid())
+  vehicleId     String   @unique
+  brand         Brand
+  availableFrom DateTime @default(now())
+  availableTo   DateTime?
+  active        Boolean  @default(true)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id])
+
+  @@index([brand])
+  @@index([active])
+}
+
+// ─── NOTIFICATIONS & LOGS ───────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model SmsLog {
+  id        String   @id @default(cuid())
+  to        String
+  message   String
+  status    String   // queued, sent, delivered, failed
+  provider  String   @default("twilio")
+  error     String?
+  sentAt    DateTime @default(now())
+
+  @@index([status])
+}
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  status    String   // queued, sent, delivered, failed
+  provider  String   @default("resend")
+  error     String?
+  sentAt    DateTime @default(now())
+
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  entity    String   // Vehicle, Lead, Deal, etc.
+  entityId  String?
+  userId    String?
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ─── SYSTEM CONFIGURATION ───────────────────────────────
+
+model SiteSettings {
+  id    String @id @default(cuid())
+  key   String @unique
+  value Json
+  brand Brand?
+
+  @@index([brand])
+}
+
+model AutovitSync {
+  id         String   @id @default(cuid())
+  vehicleId  String
+  autovitId  String?
+  status     String   // pending, synced, error
+  lastSyncAt DateTime?
+  error      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([status])
+}
