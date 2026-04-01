@@ -70,18 +70,48 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find the vehicle by model name and brand
-    // Try to match a test-drive-available vehicle
-    const vehicle = await prisma.vehicle.findFirst({
+    // Find the vehicle by title or model name match
+    // First try exact title match, then model name within the sent model string
+    let vehicle = await prisma.vehicle.findFirst({
       where: {
         brand,
         availableTestDrive: true,
-        model: {
-          name: { contains: model, mode: "insensitive" },
-        },
+        title: { equals: model, mode: "insensitive" },
       },
       select: { id: true, brand: true },
     });
+
+    if (!vehicle) {
+      // Try: vehicle title contains in model string or model string contains vehicle title
+      vehicle = await prisma.vehicle.findFirst({
+        where: {
+          brand,
+          availableTestDrive: true,
+          OR: [
+            { title: { contains: model, mode: "insensitive" } },
+            { model: { name: { contains: model, mode: "insensitive" } } },
+          ],
+        },
+        select: { id: true, brand: true },
+      });
+    }
+
+    if (!vehicle) {
+      // Try matching by searching each word of the model in title
+      const words = model.split(" ").filter((w: string) => w.length > 2);
+      if (words.length > 0) {
+        vehicle = await prisma.vehicle.findFirst({
+          where: {
+            brand,
+            availableTestDrive: true,
+            AND: words.slice(0, 3).map((word: string) => ({
+              title: { contains: word, mode: "insensitive" as const },
+            })),
+          },
+          select: { id: true, brand: true },
+        });
+      }
+    }
 
     if (!vehicle) {
       // Still create the test drive request, but log that no vehicle matched
