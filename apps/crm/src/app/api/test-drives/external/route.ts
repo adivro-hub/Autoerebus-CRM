@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
       preferredDate,
       preferredTime,
       message,
+      externalCarId,
     } = body;
 
     if (!firstName || !lastName || !phone || !model || !preferredDate || !preferredTime) {
@@ -70,9 +71,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find the vehicle by title or model name match
-    // First try exact title match, then model name within the sent model string
-    let vehicle = await prisma.vehicle.findFirst({
+    // Find the vehicle - first by externalCarId (autorulate DB id), then by title/model
+    let vehicle = null;
+
+    if (externalCarId) {
+      vehicle = await prisma.vehicle.findFirst({
+        where: {
+          brand,
+          autovitId: `autorulate:${externalCarId}`,
+        },
+        select: { id: true, brand: true },
+      });
+    }
+
+    // Fallback: try exact title match
+    if (!vehicle) {
+      vehicle = await prisma.vehicle.findFirst({
       where: {
         brand,
         availableTestDrive: true,
