@@ -91,6 +91,7 @@ interface CrmVehicle {
   featured: boolean;
   specialBadge: boolean;
   specialBadgeText: string | null;
+  availableTestDrive: boolean;
   previousOwners: number | null;
   registrationDate: Date | null;
   autovitId: string | null;
@@ -157,6 +158,7 @@ export async function pushVehicleToAutorulate(vehicle: CrmVehicle) {
     featured: vehicle.featured,
     badgeText: vehicle.specialBadge ? vehicle.specialBadgeText : null,
     financingAvailable: vehicle.availableFinancing,
+    availableTestDrive: vehicle.availableTestDrive,
     stockStatus: mapStockStatusReverse(vehicle.status),
   };
 
