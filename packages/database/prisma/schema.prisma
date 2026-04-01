@@ -165,6 +165,7 @@ model User {
   assignedServices    ServiceOrder[]  @relation("ServiceAgent")
   assignedClaims      Claim[]         @relation("ClaimAgent")
   assignedTestDrives  TestDrive[]     @relation("TestDriveAgent")
+  createdCustomers    Customer[]      @relation("CustomerCreatedBy")
   activities          Activity[]
   notifications       Notification[]
   customerNotes       CustomerNote[]
@@ -188,25 +189,28 @@ model Session {
 // ─── CUSTOMERS ──────────────────────────────────────────
 
 model Customer {
-  id           String       @id @default(cuid())
-  firstName    String
-  lastName     String
-  email        String?
-  phone        String?
-  company      String?
-  cui          String?      // Romanian company tax ID
-  type         CustomerType @default(INDIVIDUAL)
-  source       LeadSource?
-  gdprConsent  Boolean      @default(false)
-  gdprDate     DateTime?
-  address      String?
-  city         String?
-  county       String?
-  notes        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id            String       @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  company       String?
+  cui           String?      // Romanian company tax ID
+  type          CustomerType @default(INDIVIDUAL)
+  source        LeadSource?
+  sourceDetail  String?      // Extra info: URL, campaign name, referrer name, etc.
+  createdById   String?      // Admin user who created this customer
+  gdprConsent   Boolean      @default(false)
+  gdprDate      DateTime?
+  address       String?
+  city          String?
+  county        String?
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   // Relations
+  createdBy     User?        @relation("CustomerCreatedBy", fields: [createdById], references: [id])
   leads         Lead[]
   serviceOrders ServiceOrder[]
   claims        Claim[]
@@ -216,6 +220,8 @@ model Customer {
   @@index([email])
   @@index([phone])
   @@index([type])
+  @@index([source])
+  @@index([createdById])
 }
 
 model CustomerNote {

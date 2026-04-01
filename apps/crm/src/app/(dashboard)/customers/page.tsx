@@ -17,8 +17,22 @@ const TYPE_LABELS: Record<string, string> = {
   COMPANY: "Companie",
 };
 
+const SOURCE_LABELS: Record<string, string> = {
+  WEBSITE_NISSAN: "Website Nissan",
+  WEBSITE_RENAULT: "Website Renault",
+  WEBSITE_AUTORULATE: "Website Autorulate",
+  WEBSITE_SERVICE: "Website Service",
+  PHONE: "Telefon",
+  WALK_IN: "Walk-in",
+  REFERRAL: "Recomandare",
+  AUTOVIT: "Autovit",
+  FACEBOOK: "Facebook",
+  GOOGLE_ADS: "Google Ads",
+  OTHER: "Altele",
+};
+
 interface PageProps {
-  searchParams: Promise<{ brand?: string; search?: string; type?: string; page?: string }>;
+  searchParams: Promise<{ brand?: string; search?: string; type?: string; source?: string; page?: string }>;
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
@@ -34,9 +48,12 @@ export default async function CustomersPage({ searchParams }: PageProps) {
     phone: string | null;
     company: string | null;
     type: string;
+    source: string | null;
+    sourceDetail: string | null;
     city: string | null;
     county: string | null;
     createdAt: Date;
+    createdBy: { firstName: string; lastName: string } | null;
     _count: { leads: number; serviceOrders: number };
   }> = [];
   let total = 0;
@@ -47,6 +64,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       where.leads = { some: { brand: params.brand } };
     }
     if (params.type) where.type = params.type;
+    if (params.source) where.source = params.source;
     if (params.search) {
       where.OR = [
         { firstName: { contains: params.search, mode: "insensitive" } },
@@ -61,6 +79,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       prisma.customer.findMany({
         where,
         include: {
+          createdBy: { select: { firstName: true, lastName: true } },
           _count: {
             select: { leads: true, serviceOrders: true },
           },
@@ -116,6 +135,15 @@ export default async function CustomersPage({ searchParams }: PageProps) {
           <option value="INDIVIDUAL">Persoane Fizice</option>
           <option value="COMPANY">Companii</option>
         </select>
+        <select
+          defaultValue={params.source ?? ""}
+          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="">Toate sursele</option>
+          {Object.entries(SOURCE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -135,10 +163,12 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                     <th className="px-4 py-3 text-left font-medium">Nume</th>
                     <th className="px-4 py-3 text-left font-medium">Contact</th>
                     <th className="px-4 py-3 text-left font-medium">Tip</th>
+                    <th className="px-4 py-3 text-left font-medium">Sursa</th>
                     <th className="px-4 py-3 text-left font-medium">Locatie</th>
                     <th className="px-4 py-3 text-left font-medium">Lead-uri</th>
                     <th className="px-4 py-3 text-left font-medium">Service</th>
-                    <th className="px-4 py-3 text-left font-medium">Data Inregistrarii</th>
+                    <th className="px-4 py-3 text-left font-medium">Adaugat de</th>
+                    <th className="px-4 py-3 text-left font-medium">Data</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,6 +206,22 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                           {TYPE_LABELS[customer.type] ?? customer.type}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        {customer.source ? (
+                          <div>
+                            <Badge variant="secondary" className="text-xs">
+                              {SOURCE_LABELS[customer.source] ?? customer.source}
+                            </Badge>
+                            {customer.sourceDetail && (
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {customer.sourceDetail}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {[customer.city, customer.county]
                           .filter(Boolean)
@@ -186,6 +232,11 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                       </td>
                       <td className="px-4 py-3 text-center">
                         {customer._count.serviceOrders}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {customer.createdBy
+                          ? `${customer.createdBy.firstName} ${customer.createdBy.lastName}`
+                          : (<span className="italic">Sistem</span>)}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {formatDate(customer.createdAt)}
