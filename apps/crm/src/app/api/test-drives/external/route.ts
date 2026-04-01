@@ -174,6 +174,9 @@ export async function POST(request: NextRequest) {
         customerId: customer.id,
         scheduledAt,
         duration: 30,
+        contactName: `${firstName} ${lastName}`,
+        contactPhone: phone,
+        contactEmail: email || null,
         notes: message
           ? `[Website ${brand}] ${message}`
           : `[Website ${brand}] Model solicitat: ${model}`,

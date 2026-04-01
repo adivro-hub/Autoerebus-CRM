@@ -539,6 +539,9 @@ model TestDrive {
   status       TestDriveStatus @default(SCHEDULED)
   brand        Brand
   agentId      String?
+  contactName  String?         // Name provided in the booking (may differ from customer record)
+  contactPhone String?         // Phone provided in the booking
+  contactEmail String?         // Email provided in the booking
   notes        String?
   feedback     String?
   createdAt    DateTime        @default(now())

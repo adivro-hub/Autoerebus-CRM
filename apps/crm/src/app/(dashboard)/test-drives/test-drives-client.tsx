@@ -30,6 +30,9 @@ interface TestDrive {
   brand: string;
   notes: string | null;
   feedback: string | null;
+  contactName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
   customer: { firstName: string; lastName: string; phone: string | null; email: string | null };
   vehicle: { make: { name: string }; model: { name: string }; year: number } | null;
   agent: { firstName: string; lastName: string } | null;
@@ -384,16 +387,19 @@ export default function TestDrivesClient({
                     <div className="flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-muted-foreground" />
                       <span className="text-sm font-medium">
-                        {td.customer.firstName} {td.customer.lastName}
+                        {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
                       </span>
+                      {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
+                        <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
+                      )}
                     </div>
-                    {td.customer.phone && (
-                      <a href={`tel:${td.customer.phone}`} className="flex items-center gap-2 text-xs text-blue-600 hover:underline ml-5">
+                    {(td.contactPhone || td.customer.phone) && (
+                      <a href={`tel:${td.contactPhone || td.customer.phone}`} className="flex items-center gap-2 text-xs text-blue-600 hover:underline ml-5">
                         <Phone className="h-3 w-3" />
-                        {td.customer.phone}
+                        {td.contactPhone || td.customer.phone}
                       </a>
                     )}
-                    {td.customer.email && (
+                    {(td.contactEmail || td.customer.email) && (
                       <a href={`mailto:${td.customer.email}`} className="flex items-center gap-2 text-xs text-blue-600 hover:underline ml-5">
                         <Mail className="h-3 w-3" />
                         {td.customer.email}
@@ -632,17 +638,20 @@ export default function TestDrivesClient({
                               <div className="flex items-center gap-1.5">
                                 <User className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span className="text-sm font-medium">
-                                  {td.customer.firstName} {td.customer.lastName}
+                                  {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
                                 </span>
+                                {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
+                                  <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
+                                )}
                               </div>
-                              {td.customer.phone && (
-                                <a href={`tel:${td.customer.phone}`} className="ml-5 text-xs text-blue-600 hover:underline">
-                                  {td.customer.phone}
+                              {(td.contactPhone || td.customer.phone) && (
+                                <a href={`tel:${td.contactPhone || td.customer.phone}`} className="ml-5 text-xs text-blue-600 hover:underline">
+                                  {td.contactPhone || td.customer.phone}
                                 </a>
                               )}
-                              {td.customer.email && (
+                              {(td.contactEmail || td.customer.email) && (
                                 <div className="ml-5 text-xs text-muted-foreground truncate">
-                                  {td.customer.email}
+                                  {td.contactEmail || td.customer.email}
                                 </div>
                               )}
                             </div>
