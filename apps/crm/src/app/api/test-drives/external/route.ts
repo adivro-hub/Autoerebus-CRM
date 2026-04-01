@@ -199,7 +199,7 @@ export async function POST(request: NextRequest) {
         customerId: customer.id,
       },
     });
-  } catch (error: unknown) {
+  } catch (error) {
     console.error("[API:TestDrive:External] Error:", error);
     const msg = error instanceof Error ? error.message : "Internal error";
     return NextResponse.json(
