@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { CustomerOverlay } from "@/components/customer-overlay";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -20,10 +22,12 @@ import {
   Mail,
   AlertCircle,
   Bell,
+  Loader2,
 } from "lucide-react";
 
 interface TestDrive {
   id: string;
+  customerId: string;
   scheduledAt: string;
   duration: number;
   status: string;
@@ -34,7 +38,7 @@ interface TestDrive {
   contactPhone: string | null;
   contactEmail: string | null;
   customer: { firstName: string; lastName: string; phone: string | null; email: string | null };
-  vehicle: { make: { name: string }; model: { name: string }; year: number } | null;
+  vehicle: { id: string; make: { name: string }; model: { name: string }; year: number } | null;
   agent: { firstName: string; lastName: string } | null;
 }
 
@@ -97,6 +101,10 @@ export default function TestDrivesClient({
   const [showForm, setShowForm] = useState(false);
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const [completeFeedback, setCompleteFeedback] = useState("");
+  const [completingLoading, setCompletingLoading] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // Helper: local date string (YYYY-MM-DD) to avoid UTC timezone shift
   const toLocalDateStr = (d: Date | string) => {
@@ -304,6 +312,29 @@ export default function TestDrivesClient({
     }
   }
 
+  async function handleCompleteTestDrive() {
+    if (!completingId || !completeFeedback.trim()) return;
+    setCompletingLoading(true);
+    try {
+      const res = await fetch(`/api/test-drives/${completingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED", feedback: completeFeedback.trim() }),
+      });
+      if (!res.ok) throw new Error("Eroare");
+      setTestDrives((prev) =>
+        prev.map((td) => (td.id === completingId ? { ...td, status: "COMPLETED", feedback: completeFeedback.trim() } : td))
+      );
+      setCompletingId(null);
+      setCompleteFeedback("");
+      setStatusMenuId(null);
+    } catch {
+      setError("Eroare la confirmarea test drive-ului");
+    } finally {
+      setCompletingLoading(false);
+    }
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Sigur doriti sa stergeti acest test drive?")) return;
     try {
@@ -386,9 +417,9 @@ export default function TestDrivesClient({
                   <div className="mt-3 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <User className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-sm font-medium">
+                      <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
                         {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
-                      </span>
+                      </button>
                       {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
                         <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
                       )}
@@ -406,12 +437,12 @@ export default function TestDrivesClient({
                       </a>
                     )}
                     {td.vehicle && (
-                      <div className="flex items-center gap-2">
-                        <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Link href={`/inventory/${td.vehicle.id}/edit`} className="flex items-center gap-2 text-blue-600 hover:underline">
+                        <Car className="h-3.5 w-3.5" />
                         <span className="text-sm">
                           {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
                         </span>
-                      </div>
+                      </Link>
                     )}
                   </div>
 
@@ -637,9 +668,9 @@ export default function TestDrivesClient({
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <User className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="text-sm font-medium">
+                                <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
                                   {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
-                                </span>
+                                </button>
                                 {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
                                   <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
                                 )}
@@ -657,12 +688,12 @@ export default function TestDrivesClient({
                             </div>
                             <div>
                               {td.vehicle && (
-                                <div className="flex items-center gap-1.5">
-                                  <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                                <Link href={`/inventory/${td.vehicle.id}/edit`} className="flex items-center gap-1.5 text-blue-600 hover:underline">
+                                  <Car className="h-3.5 w-3.5" />
                                   <span className="text-sm">
                                     {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
                                   </span>
-                                </div>
+                                </Link>
                               )}
                               {td.agent && (
                                 <div className="ml-5 text-xs text-muted-foreground">
@@ -671,6 +702,54 @@ export default function TestDrivesClient({
                               )}
                             </div>
                           </div>
+
+                          {(td.status === "CONFIRMED" || td.status === "IN_PROGRESS") && (
+                            <div className="border-t pt-2 space-y-2">
+                              {completingId === td.id ? (
+                                <>
+                                  <textarea
+                                    value={completeFeedback}
+                                    onChange={(e) => setCompleteFeedback(e.target.value)}
+                                    placeholder="Observații obligatorii (cum a decurs, impresii client, interes de cumpărare...)"
+                                    className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                                    rows={3}
+                                    autoFocus
+                                  />
+                                  <div className="flex gap-2 justify-end">
+                                    <button
+                                      onClick={() => { setCompletingId(null); setCompleteFeedback(""); }}
+                                      className="px-3 py-1.5 text-sm rounded-md border hover:bg-muted transition-colors"
+                                    >
+                                      Anulează
+                                    </button>
+                                    <button
+                                      onClick={handleCompleteTestDrive}
+                                      disabled={!completeFeedback.trim() || completingLoading}
+                                      className="flex items-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
+                                    >
+                                      {completingLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                      Confirmă
+                                    </button>
+                                  </div>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => { setCompletingId(td.id); setCompleteFeedback(""); }}
+                                  className="w-full flex items-center justify-center gap-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 text-sm font-medium transition-colors"
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                  Confirmă efectuarea test drive-ului
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {td.feedback && (
+                            <div className="border-t pt-1.5 text-xs">
+                              <span className="font-medium text-muted-foreground">Feedback:</span>{" "}
+                              <span>{td.feedback}</span>
+                            </div>
+                          )}
 
                           {td.notes && (
                             <p className="text-xs text-muted-foreground italic border-t pt-1.5">
@@ -871,6 +950,14 @@ export default function TestDrivesClient({
       {/* Click outside to close status menu */}
       {statusMenuId && (
         <div className="fixed inset-0 z-[5]" onClick={() => setStatusMenuId(null)} />
+      )}
+
+      {/* Customer History Overlay */}
+      {selectedCustomerId && (
+        <CustomerOverlay
+          customerId={selectedCustomerId}
+          onClose={() => setSelectedCustomerId(null)}
+        />
       )}
     </div>
   );

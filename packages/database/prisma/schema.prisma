@@ -84,6 +84,7 @@ enum DealStage {
 }
 
 enum ActivityType {
+  CREATED
   CALL
   EMAIL
   SMS
@@ -91,6 +92,7 @@ enum ActivityType {
   NOTE
   TEST_DRIVE
   DOCUMENT
+  STAGE_CHANGE
 }
 
 enum ServiceOrderStatus {
@@ -438,13 +440,13 @@ model Activity {
   content   String
   leadId    String?
   dealId    String?
-  userId    String
+  userId    String?
   metadata  Json?
   createdAt DateTime     @default(now())
 
   lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
   deal Deal? @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  user User  @relation(fields: [userId], references: [id])
+  user User? @relation(fields: [userId], references: [id])
 
   @@index([leadId])
   @@index([dealId])

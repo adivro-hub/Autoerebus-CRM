@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@autoerebus/ui/lib/utils";
-import { BrandSwitcher } from "./brand-switcher";
+import { BrandSwitcher, useBrand } from "./brand-switcher";
 
 interface NavItem {
   href: string;
@@ -55,7 +55,16 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { selectedBrand } = useBrand();
   const [collapsed, setCollapsed] = useState(false);
+
+  // Append brand param to nav links
+  const withBrand = (href: string) => {
+    if (selectedBrand && selectedBrand !== "ALL") {
+      return `${href}?brand=${selectedBrand}`;
+    }
+    return href;
+  };
   const [expandedItems, setExpandedItems] = useState<string[]>([
     // Auto-expand if user is on an inventory page
     ...(pathname.startsWith("/inventory") ? ["/inventory"] : []),
@@ -154,7 +163,7 @@ export function Sidebar() {
                         return (
                           <Link
                             key={child.href}
-                            href={child.href}
+                            href={withBrand(child.href)}
                             className={cn(
                               "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
                               isChildActive
@@ -172,7 +181,7 @@ export function Sidebar() {
                 </>
               ) : (
                 <Link
-                  href={item.href}
+                  href={withBrand(item.href)}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     isActive

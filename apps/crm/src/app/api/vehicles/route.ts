@@ -3,6 +3,53 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
 import { pushVehicleToAutorulate } from "@/lib/autorulate-sync-push";
 
+export async function GET(request: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json({ error: "Neautorizat" }, { status: 401 });
+  }
+
+  const { searchParams } = request.nextUrl;
+  const search = searchParams.get("search") || "";
+  const brand = searchParams.get("brand") || "";
+  const limit = parseInt(searchParams.get("limit") || "10");
+
+  try {
+    const conditions: Record<string, unknown>[] = [];
+    if (brand && brand !== "ALL") conditions.push({ brand });
+    if (search) {
+      conditions.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { make: { name: { contains: search, mode: "insensitive" } } },
+          { model: { name: { contains: search, mode: "insensitive" } } },
+        ],
+      });
+    }
+    const where = conditions.length > 0 ? { AND: conditions } : {};
+
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        year: true,
+        price: true,
+        discountPrice: true,
+        currency: true,
+        make: { select: { name: true } },
+        model: { select: { name: true } },
+      },
+      take: limit,
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ vehicles });
+  } catch {
+    return NextResponse.json({ vehicles: [] });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {

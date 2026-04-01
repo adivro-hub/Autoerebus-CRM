@@ -27,6 +27,7 @@ export default async function TestDrivesPage({ searchParams }: PageProps) {
         customer: { select: { firstName: true, lastName: true, phone: true, email: true } },
         vehicle: {
           select: {
+            id: true,
             year: true,
             make: { select: { name: true } },
             model: { select: { name: true } },
@@ -40,5 +41,5 @@ export default async function TestDrivesPage({ searchParams }: PageProps) {
     // DB not available
   }
 
-  return <TestDrivesClient initialTestDrives={JSON.parse(JSON.stringify(testDrives))} />;
+  return <TestDrivesClient key={brand || "ALL"} initialTestDrives={JSON.parse(JSON.stringify(testDrives))} />;
 }

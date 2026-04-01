@@ -126,21 +126,20 @@ export function MakesModelsSection({ makes }: Props) {
     <>
       {/* Marci & Modele */}
       <Card>
-        <button
-          onClick={() => setExpandedMakes(!expandedMakes)}
-          className="flex w-full items-center justify-between p-4"
-        >
-          <div className="flex items-center gap-2">
+        <div className="flex w-full items-center justify-between p-4">
+          <button
+            onClick={() => setExpandedMakes(!expandedMakes)}
+            className="flex items-center gap-2"
+          >
             {expandedMakes ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
             <Tags className="h-4 w-4" />
             <span className="text-sm font-semibold">Marci & Modele</span>
             <Badge variant="secondary">{makes.length} marci</Badge>
-          </div>
+          </button>
           <Button
             size="sm"
             variant="outline"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={() => {
               setEditingMake(null);
               setMakeName("");
               setMakeFormOpen(true);
@@ -149,7 +148,7 @@ export function MakesModelsSection({ makes }: Props) {
             <Plus className="h-3.5 w-3.5" />
             Adauga Marca
           </Button>
-        </button>
+        </div>
 
         {expandedMakes && (
           <CardContent className="border-t p-0">

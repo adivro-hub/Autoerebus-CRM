@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useCallback } from "react";
+import { createContext, useContext, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { BRAND_LABELS, type BrandType } from "@autoerebus/types";
 
@@ -28,21 +28,58 @@ const BRAND_OPTIONS: { value: BrandFilter; label: string; color: string }[] = [
   { value: "SERVICE", label: "Service", color: "#2E7D32" },
 ];
 
+const STORAGE_KEY = "autoerebus_brand";
+
 export function BrandProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const selectedBrand = (searchParams.get("brand") as BrandFilter) || "ALL";
+
+  // Initialize from URL param, then localStorage, then "ALL"
+  const urlBrand = searchParams.get("brand") as BrandFilter | null;
+  const [storedBrand, setStoredBrand] = useState<BrandFilter>("ALL");
+  const [initialized, setInitialized] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY) as BrandFilter | null;
+    if (saved && BRAND_OPTIONS.some((o) => o.value === saved)) {
+      setStoredBrand(saved);
+    }
+    setInitialized(true);
+  }, []);
+
+  // If URL has brand param, sync to storage; otherwise use stored value
+  const selectedBrand = urlBrand || storedBrand;
+
+  // On first load, if no URL brand but stored brand exists, update URL
+  useEffect(() => {
+    if (initialized && !urlBrand && storedBrand !== "ALL") {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("brand", storedBrand);
+      params.delete("page");
+      const query = params.toString();
+      router.replace(`${pathname}${query ? `?${query}` : ""}`);
+    }
+  }, [initialized, pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setSelectedBrand = useCallback(
     (brand: BrandFilter) => {
+      // Save to localStorage
+      if (brand === "ALL") {
+        localStorage.removeItem(STORAGE_KEY);
+      } else {
+        localStorage.setItem(STORAGE_KEY, brand);
+      }
+      setStoredBrand(brand);
+
+      // Update URL
       const params = new URLSearchParams(searchParams.toString());
       if (brand === "ALL") {
         params.delete("brand");
       } else {
         params.set("brand", brand);
       }
-      // Reset page when switching brand
       params.delete("page");
       const query = params.toString();
       router.push(`${pathname}${query ? `?${query}` : ""}`);

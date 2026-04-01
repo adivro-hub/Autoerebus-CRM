@@ -144,23 +144,24 @@ export async function POST(request: NextRequest) {
     // Parse scheduled date/time
     const scheduledAt = new Date(`${preferredDate}T${preferredTime}:00`);
 
-    // Check for conflicts
-    const conflict = await prisma.testDrive.findFirst({
+    // Check for exact duplicate (same vehicle, same customer, same time)
+    const duplicate = await prisma.testDrive.findFirst({
       where: {
         vehicleId: vehicle.id,
+        customerId: customer.id,
         status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
         scheduledAt: {
-          gte: new Date(scheduledAt.getTime() - 30 * 60 * 1000),
-          lt: new Date(scheduledAt.getTime() + 30 * 60 * 1000),
+          gte: new Date(scheduledAt.getTime() - 5 * 60 * 1000),
+          lt: new Date(scheduledAt.getTime() + 5 * 60 * 1000),
         },
       },
     });
 
-    if (conflict) {
+    if (duplicate) {
       return NextResponse.json(
         {
           success: false,
-          error: "Time slot unavailable. Please choose another time.",
+          error: "Aveți deja o programare pentru această mașină la această oră.",
           customerId: customer.id,
         },
         { status: 409 }
@@ -184,6 +185,49 @@ export async function POST(request: NextRequest) {
         status: "SCHEDULED",
       },
     });
+
+    // Create lead + deal in "Test Drive Programat" pipeline stage
+    const existingLead = await prisma.lead.findFirst({
+      where: { customerId: customer.id, vehicleId: vehicle.id, status: { not: "LOST" } },
+    });
+
+    if (!existingLead) {
+      const tdLead = await prisma.lead.create({
+        data: {
+          customerId: customer.id,
+          vehicleId: vehicle.id,
+          source: `WEBSITE_${brand}` as "WEBSITE_NISSAN" | "WEBSITE_RENAULT" | "WEBSITE_AUTORULATE",
+          brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+          status: "NEW",
+          notes: `[Test Drive] ${model}\nProgramat: ${preferredDate} ${preferredTime}${message ? `\nMesaj: ${message}` : ""}`,
+        },
+      });
+
+      const tdStage = await prisma.pipelineStage.findFirst({
+        where: { brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE", pipelineType: "SALES", name: "Lead Nou" },
+      });
+
+      if (tdStage) {
+        await prisma.deal.create({
+          data: {
+            leadId: tdLead.id,
+            stageId: tdStage.id,
+            value: vehicle.id ? (await prisma.vehicle.findUnique({ where: { id: vehicle.id }, select: { price: true, discountPrice: true } }))?.discountPrice ?? (await prisma.vehicle.findUnique({ where: { id: vehicle.id }, select: { price: true } }))?.price ?? null : null,
+            currency: "EUR",
+            probability: 30,
+            brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+          },
+        });
+      }
+
+      await prisma.activity.create({
+        data: {
+          type: "CREATED",
+          content: `Lead creat automat — Test Drive programat via website ${brand}: ${model}`,
+          leadId: tdLead.id,
+        },
+      }).catch(() => {});
+    }
 
     // Log activity
     await prisma.auditLog.create({

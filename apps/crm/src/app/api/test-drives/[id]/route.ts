@@ -16,6 +16,11 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
+    const existing = await prisma.testDrive.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const testDrive = await prisma.testDrive.update({
       where: { id },
       data: {
@@ -27,6 +32,66 @@ export async function PATCH(
         ...(body.duration && { duration: body.duration }),
       },
     });
+
+    // If test drive confirmed as COMPLETED, move lead/deal to "Test Drive Efectuat"
+    if (body.status === "COMPLETED" && existing.vehicleId) {
+      const lead = await prisma.lead.findFirst({
+        where: {
+          customerId: existing.customerId,
+          vehicleId: existing.vehicleId,
+          status: { not: "LOST" },
+        },
+        include: { deals: true },
+      });
+
+      if (lead && lead.deals.length > 0) {
+        const efectuatStage = await prisma.pipelineStage.findFirst({
+          where: {
+            brand: existing.brand,
+            pipelineType: "SALES",
+            name: "Test Drive Efectuat",
+          },
+        });
+
+        if (efectuatStage) {
+          const deal = lead.deals[0];
+          const oldStage = await prisma.pipelineStage.findUnique({
+            where: { id: deal.stageId },
+            select: { name: true },
+          });
+
+          await prisma.deal.update({
+            where: { id: deal.id },
+            data: { stageId: efectuatStage.id },
+          });
+
+          await prisma.activity.create({
+            data: {
+              type: "STAGE_CHANGE",
+              content: `Mutat din "${oldStage?.name || "?"}" în "Test Drive Efectuat" — Test drive confirmat`,
+              leadId: lead.id,
+              dealId: deal.id,
+              userId: session.user.id || null,
+            },
+          }).catch(() => {});
+        }
+      }
+
+      // Log test drive completion on lead
+      const leadForLog = await prisma.lead.findFirst({
+        where: { customerId: existing.customerId, vehicleId: existing.vehicleId },
+      });
+      if (leadForLog) {
+        await prisma.activity.create({
+          data: {
+            type: "TEST_DRIVE",
+            content: `Test drive efectuat${body.feedback ? ` — Feedback: ${body.feedback}` : ""}`,
+            leadId: leadForLog.id,
+            userId: session.user.id || null,
+          },
+        }).catch(() => {});
+      }
+    }
 
     return NextResponse.json(testDrive);
   } catch (error: unknown) {
