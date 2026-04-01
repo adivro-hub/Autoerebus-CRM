@@ -87,13 +87,14 @@ export async function POST(request: NextRequest) {
     // Fallback: try exact title match
     if (!vehicle) {
       vehicle = await prisma.vehicle.findFirst({
-      where: {
-        brand,
-        availableTestDrive: true,
-        title: { equals: model, mode: "insensitive" },
-      },
-      select: { id: true, brand: true },
-    });
+        where: {
+          brand,
+          availableTestDrive: true,
+          title: { equals: model, mode: "insensitive" },
+        },
+        select: { id: true, brand: true },
+      });
+    }
 
     if (!vehicle) {
       // Try: vehicle title contains in model string or model string contains vehicle title
