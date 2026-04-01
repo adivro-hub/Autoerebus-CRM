@@ -95,9 +95,15 @@ export default function TestDrivesClient({
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Helper: local date string (YYYY-MM-DD) to avoid UTC timezone shift
+  const toLocalDateStr = (d: Date | string) => {
+    const date = typeof d === "string" ? new Date(d) : d;
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+
   // Calendar state
   const today = new Date();
-  const todayStr = today.toISOString().split("T")[0];
+  const todayStr = toLocalDateStr(today);
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
 
@@ -139,7 +145,7 @@ export default function TestDrivesClient({
     const counts: Record<string, number> = {};
     testDrives.forEach((td) => {
       if (td.status === "CANCELLED" || td.status === "NO_SHOW") return;
-      const key = new Date(td.scheduledAt).toISOString().split("T")[0];
+      const key = toLocalDateStr(td.scheduledAt);
       counts[key] = (counts[key] || 0) + 1;
     });
     return counts;
@@ -150,7 +156,7 @@ export default function TestDrivesClient({
     if (!selectedDate) return [];
     return testDrives
       .filter((td) => {
-        const tdDate = new Date(td.scheduledAt).toISOString().split("T")[0];
+        const tdDate = toLocalDateStr(td.scheduledAt);
         return tdDate === selectedDate;
       })
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
@@ -169,7 +175,7 @@ export default function TestDrivesClient({
     for (let i = startDow - 1; i >= 0; i--) {
       const d = new Date(calYear, calMonth, -i);
       days.push({
-        date: d.toISOString().split("T")[0],
+        date: toLocalDateStr(d),
         day: d.getDate(),
         isCurrentMonth: false,
       });
@@ -179,7 +185,7 @@ export default function TestDrivesClient({
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(calYear, calMonth, d);
       days.push({
-        date: date.toISOString().split("T")[0],
+        date: toLocalDateStr(date),
         day: d,
         isCurrentMonth: true,
       });
@@ -191,7 +197,7 @@ export default function TestDrivesClient({
       for (let d = 1; d <= remaining; d++) {
         const date = new Date(calYear, calMonth + 1, d);
         days.push({
-          date: date.toISOString().split("T")[0],
+          date: toLocalDateStr(date),
           day: d,
           isCurrentMonth: false,
         });
