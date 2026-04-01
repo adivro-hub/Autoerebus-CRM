@@ -7,6 +7,7 @@ import { prisma } from "@autoerebus/database";
 const API_KEYS: Record<string, string> = {
   [process.env.NISSAN_API_KEY ?? "nissan-autoerebus-key"]: "NISSAN",
   [process.env.RENAULT_API_KEY ?? "renault-autoerebus-key"]: "RENAULT",
+  [process.env.AUTORULATE_API_KEY ?? "autorulate-autoerebus-key"]: "AUTORULATE",
 };
 
 export async function POST(request: NextRequest) {
