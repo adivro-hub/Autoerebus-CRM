@@ -144,24 +144,24 @@ export async function POST(request: NextRequest) {
     // Parse scheduled date/time
     const scheduledAt = new Date(`${preferredDate}T${preferredTime}:00`);
 
-    // Check for exact duplicate (same vehicle, same customer, same time)
-    const duplicate = await prisma.testDrive.findFirst({
+    // Check for conflicts: 1h block (30 min TD + 30 min buffer)
+    const BLOCK_MINUTES = 60;
+    const conflict = await prisma.testDrive.findFirst({
       where: {
         vehicleId: vehicle.id,
-        customerId: customer.id,
         status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
         scheduledAt: {
-          gte: new Date(scheduledAt.getTime() - 5 * 60 * 1000),
-          lt: new Date(scheduledAt.getTime() + 5 * 60 * 1000),
+          gte: new Date(scheduledAt.getTime() - BLOCK_MINUTES * 60 * 1000),
+          lt: new Date(scheduledAt.getTime() + BLOCK_MINUTES * 60 * 1000),
         },
       },
     });
 
-    if (duplicate) {
+    if (conflict) {
       return NextResponse.json(
         {
           success: false,
-          error: "Aveți deja o programare pentru această mașină la această oră.",
+          error: "Acest interval orar nu este disponibil. Vă rugăm alegeți altă oră.",
           customerId: customer.id,
         },
         { status: 409 }
