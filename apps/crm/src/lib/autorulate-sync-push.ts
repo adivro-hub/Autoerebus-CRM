@@ -53,10 +53,6 @@ function mapStatusReverse(status: string): string {
   return map[status] ?? "AVAILABLE";
 }
 
-function mapStockStatusReverse(status: string): string {
-  return status === "IN_TRANSIT" ? "COMING_SOON" : "IN_STOCK";
-}
-
 // engineSize is in cm³ in both systems, no conversion needed
 
 // ─── Push vehicle to Autorulate DB ──────────────────────
@@ -159,7 +155,6 @@ export async function pushVehicleToAutorulate(vehicle: CrmVehicle) {
     badgeText: vehicle.specialBadge ? vehicle.specialBadgeText : null,
     financingAvailable: vehicle.availableFinancing,
     availableTestDrive: vehicle.availableTestDrive,
-    stockStatus: mapStockStatusReverse(vehicle.status),
   };
 
   if (autorutaleId) {

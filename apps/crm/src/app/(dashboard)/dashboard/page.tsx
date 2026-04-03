@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/components/card";
 import { formatCurrency } from "@autoerebus/ui/lib/utils";
-import { Car, Users, TrendingUp, Wrench, Plus, FileText, Phone, CalendarPlus } from "lucide-react";
+import { Car, Users, TrendingUp, Wrench, Plus, FileText, Phone, CalendarPlus, MessageSquare, ArrowRight, Sparkles } from "lucide-react";
 import { RevenueChart } from "./revenue-chart";
 
 export const metadata = {
@@ -24,26 +24,34 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const brandWhere = brand ? { brand: brand as any } : {};
 
   let vehicleCount = 0;
-  let leadCount = 0;
-  let dealCount = 0;
-  let serviceCount = 0;
-  let totalRevenue = 0;
+  let newLeadCount = 0;
+  let testDriveCount = 0;
+  let pipelineValue = 0;
+  let wonCount = 0;
+  let wonValue = 0;
 
   try {
-    const [vehicles, leads, deals, services, revenue] = await Promise.all([
+    const [vehicles, newLeads, testDrives, pipeline, won] = await Promise.all([
       prisma.vehicle.count({ where: { status: "IN_STOCK", ...brandWhere } }),
       prisma.lead.count({
         where: {
-          status: { in: ["NEW", "CONTACTED", "QUALIFIED", "NEGOTIATION"] },
+          status: "NEW",
           ...brandWhere,
         },
       }),
-      prisma.deal.count({ where: brandWhere }),
-      prisma.serviceOrder.count({
+      prisma.testDrive.count({
         where: {
-          status: { in: ["SCHEDULED", "RECEIVED", "IN_PROGRESS", "WAITING_PARTS"] },
-          ...(brand ? { brand: brand as any } : {}),
+          status: { in: ["SCHEDULED", "CONFIRMED"] },
+          ...brandWhere,
         },
+      }),
+      prisma.deal.aggregate({
+        where: {
+          stage: { name: { notIn: ["Câștigat", "Pierdut"] } },
+          ...brandWhere,
+        },
+        _sum: { value: true },
+        _count: true,
       }),
       prisma.deal.aggregate({
         where: {
@@ -51,14 +59,16 @@ export default async function DashboardPage({ searchParams }: PageProps) {
           ...brandWhere,
         },
         _sum: { value: true },
+        _count: true,
       }),
     ]);
 
     vehicleCount = vehicles;
-    leadCount = leads;
-    dealCount = deals;
-    serviceCount = services;
-    totalRevenue = revenue._sum.value ?? 0;
+    newLeadCount = newLeads;
+    testDriveCount = testDrives;
+    pipelineValue = pipeline._sum.value ?? 0;
+    wonCount = won._count ?? 0;
+    wonValue = won._sum.value ?? 0;
   } catch {
     // DB not available
   }
@@ -68,52 +78,85 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     id: string;
     text: string;
     time: Date;
+    type: string;
   }> = [];
 
   try {
-    const activities = await prisma.auditLog.findMany({
+    const activities = await prisma.activity.findMany({
       orderBy: { createdAt: "desc" },
-      take: 5,
-      include: { user: { select: { firstName: true, lastName: true } } },
+      take: 8,
+      include: {
+        user: { select: { firstName: true, lastName: true } },
+        lead: {
+          select: {
+            customer: { select: { firstName: true, lastName: true } },
+            brand: true,
+          },
+        },
+      },
     });
 
-    recentActivities = activities.map((a: { id: string; action: string; entity: string; entityId: string | null; createdAt: Date; user: { firstName: string; lastName: string } | null }) => ({
-      id: a.id,
-      text: `${a.action}: ${a.entity} ${a.entityId ? `#${a.entityId.slice(-6)}` : ""}${a.user ? ` - ${a.user.firstName} ${a.user.lastName}` : ""}`,
-      time: a.createdAt,
-    }));
+    recentActivities = activities.map((a: { id: string; type: string; content: string; createdAt: Date; user: { firstName: string; lastName: string } | null; lead: { customer: { firstName: string; lastName: string }; brand: string } | null }) => {
+      const customerName = a.lead?.customer ? `${a.lead.customer.firstName} ${a.lead.customer.lastName}` : "";
+      const agentName = a.user ? `${a.user.firstName} ${a.user.lastName}` : "Sistem";
+      const brandTag = a.lead?.brand ? `[${a.lead.brand}]` : "";
+
+      let text = "";
+      switch (a.type) {
+        case "CREATED":
+          text = `${brandTag} Lead nou: ${customerName}`;
+          break;
+        case "STAGE_CHANGE":
+          text = `${brandTag} ${customerName} — ${a.content}`;
+          break;
+        case "NOTE":
+          text = `${brandTag} ${agentName}: ${a.content.slice(0, 60)}${a.content.length > 60 ? "..." : ""}`;
+          break;
+        case "TEST_DRIVE":
+          text = `${brandTag} Test Drive: ${customerName} — ${a.content.slice(0, 50)}`;
+          break;
+        default:
+          text = `${brandTag} ${a.content.slice(0, 60)}`;
+      }
+
+      return { id: a.id, text, time: a.createdAt, type: a.type };
+    });
   } catch {
     // Fallback
   }
 
   const stats = [
     {
-      title: "Vehicule in Stoc",
-      value: vehicleCount.toString(),
-      change: brand ? `Filtrat: ${brand}` : "Toate brandurile",
-      icon: Car,
-      color: "text-blue-600 bg-blue-100",
-    },
-    {
-      title: "Lead-uri Active",
-      value: leadCount.toString(),
-      change: brand ? `Filtrat: ${brand}` : "Toate brandurile",
+      title: "Lead-uri Noi",
+      value: newLeadCount.toString(),
+      change: newLeadCount > 0 ? "Necesită atenție" : "Niciun lead nou",
       icon: Users,
-      color: "text-green-600 bg-green-100",
+      color: newLeadCount > 0 ? "text-red-600 bg-red-100" : "text-green-600 bg-green-100",
+      href: "/sales?tab=leads",
     },
     {
-      title: "Dealuri in Derulare",
-      value: dealCount.toString(),
-      change: totalRevenue > 0 ? `~${formatCurrency(totalRevenue)} valoare` : "0 EUR valoare",
+      title: "Test Drive-uri",
+      value: testDriveCount.toString(),
+      change: testDriveCount > 0 ? `${testDriveCount} programări active` : "Nicio programare",
+      icon: Car,
+      color: "text-cyan-600 bg-cyan-100",
+      href: "/test-drives",
+    },
+    {
+      title: "Pipeline Activ",
+      value: pipelineValue > 0 ? formatCurrency(pipelineValue) : "0 €",
+      change: `${vehicleCount} vehicule în stoc`,
       icon: TrendingUp,
       color: "text-orange-600 bg-orange-100",
+      href: "/sales?tab=pipeline",
     },
     {
-      title: "Comenzi Service",
-      value: serviceCount.toString(),
-      change: brand ? `Filtrat: ${brand}` : "Toate brandurile",
-      icon: Wrench,
-      color: "text-purple-600 bg-purple-100",
+      title: "Vânzări Câștigate",
+      value: wonCount.toString(),
+      change: wonValue > 0 ? `${formatCurrency(wonValue)} total` : "0 € total",
+      icon: TrendingUp,
+      color: "text-emerald-600 bg-emerald-100",
+      href: "/sales?tab=pipeline",
     },
   ];
 
@@ -143,22 +186,24 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">{stat.title}</p>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                  <p className="text-xs text-muted-foreground">{stat.change}</p>
+          <a key={stat.title} href={stat.href} className="block transition-transform hover:scale-[1.02]">
+            <Card className="h-full cursor-pointer hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">{stat.title}</p>
+                    <p className="text-2xl font-bold">{stat.value}</p>
+                    <p className="text-xs text-muted-foreground">{stat.change}</p>
+                  </div>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.color}`}
+                  >
+                    <stat.icon className="h-5 w-5" />
+                  </div>
                 </div>
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.color}`}
-                >
-                  <stat.icon className="h-5 w-5" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </a>
         ))}
       </div>
 
@@ -205,17 +250,29 @@ export default async function DashboardPage({ searchParams }: PageProps) {
             {recentActivities.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nicio activitate recenta.</p>
             ) : (
-              recentActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between rounded-md border p-3"
-                >
-                  <p className="text-sm">{activity.text}</p>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {activity.time.toLocaleString("ro-RO")}
-                  </span>
-                </div>
-              ))
+              recentActivities.map((activity) => {
+                const typeStyles: Record<string, { icon: typeof Car; color: string }> = {
+                  CREATED: { icon: Sparkles, color: "text-green-500" },
+                  STAGE_CHANGE: { icon: ArrowRight, color: "text-blue-500" },
+                  NOTE: { icon: MessageSquare, color: "text-gray-500" },
+                  TEST_DRIVE: { icon: Car, color: "text-cyan-500" },
+                };
+                const style = typeStyles[activity.type] || typeStyles["NOTE"];
+                const Icon = style!.icon;
+                const color = style!.color;
+                return (
+                  <div
+                    key={activity.id}
+                    className="flex items-center gap-3 rounded-md border p-3"
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${color}`} />
+                    <p className="flex-1 text-sm">{activity.text}</p>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {activity.time.toLocaleString("ro-RO")}
+                    </span>
+                  </div>
+                );
+              })
             )}
           </div>
         </CardContent>
