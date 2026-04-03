@@ -102,9 +102,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get existing test drives for this vehicle on this date
-    const startOfDay = new Date(`${date}T00:00:00.000Z`);
-    const endOfDay = new Date(`${date}T23:59:59.999Z`);
+    // Get existing test drives for this vehicle on this date (Romania timezone)
+    const testDateForTz = new Date(`${date}T12:00:00Z`);
+    const roFmt = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Bucharest", timeZoneName: "short" });
+    const tzP = roFmt.formatToParts(testDateForTz);
+    const tzN = tzP.find((p) => p.type === "timeZoneName")?.value || "";
+    const tz = tzN.includes("3") || tzN === "EEST" ? "+03:00" : "+02:00";
+    const startOfDay = new Date(`${date}T00:00:00${tz}`);
+    const endOfDay = new Date(`${date}T23:59:59${tz}`);
 
     const existingTDs = await prisma.testDrive.findMany({
       where: {
@@ -121,8 +126,7 @@ export async function GET(request: NextRequest) {
     // Generate all slots and mark unavailable ones
     const allSlots = generateAllSlots();
     const slots = allSlots.map((time) => {
-      const [h, m] = time.split(":").map(Number);
-      const slotStart = new Date(`${date}T${time}:00`);
+      const slotStart = new Date(`${date}T${time}:00${tz}`);
       const slotStartMs = slotStart.getTime();
 
       // Check if this slot conflicts with any existing test drive

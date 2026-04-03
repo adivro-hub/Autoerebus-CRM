@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@autoerebus/database";
 
+export const maxDuration = 30;
+
 // Public endpoint - no auth required
 // Accepts test drive requests from external websites (Nissan, Renault, etc.)
 
@@ -141,8 +143,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Parse scheduled date/time
-    const scheduledAt = new Date(`${preferredDate}T${preferredTime}:00`);
+    // Parse scheduled date/time (Romania timezone UTC+2/+3)
+    // Determine if date is in EEST (summer, UTC+3) or EET (winter, UTC+2)
+    const testDate = new Date(`${preferredDate}T12:00:00Z`);
+    const roFormatter = new Intl.DateTimeFormat("en-US", { timeZone: "Europe/Bucharest", timeZoneName: "short" });
+    const tzParts = roFormatter.formatToParts(testDate);
+    const tzName = tzParts.find((p) => p.type === "timeZoneName")?.value || "";
+    const offset = tzName.includes("3") || tzName === "EEST" ? "+03:00" : "+02:00";
+    const scheduledAt = new Date(`${preferredDate}T${preferredTime}:00${offset}`);
 
     // Check for conflicts: 1h block (30 min TD + 30 min buffer)
     const BLOCK_MINUTES = 60;
