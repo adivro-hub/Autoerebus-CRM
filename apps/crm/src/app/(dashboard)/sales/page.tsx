@@ -44,6 +44,8 @@ export default async function SalesPage({ searchParams }: PageProps) {
             id: true,
             title: true,
             year: true,
+            price: true,
+            discountPrice: true,
             make: { select: { name: true } },
             model: { select: { name: true } },
           },
@@ -86,11 +88,15 @@ export default async function SalesPage({ searchParams }: PageProps) {
               select: {
                 id: true,
                 source: true,
+                type: true,
+                additionalVehicleIds: true,
                 customer: { select: { firstName: true, lastName: true } },
                 vehicle: {
                   select: {
                     make: { select: { name: true } },
                     model: { select: { name: true } },
+                    price: true,
+                    discountPrice: true,
                   },
                 },
               },
@@ -101,6 +107,27 @@ export default async function SalesPage({ searchParams }: PageProps) {
         },
       },
     });
+    // Resolve additionalVehicleIds to vehicle data
+    const allAdditionalIds = new Set<string>();
+    (stages as { deals: { lead: { additionalVehicleIds?: string[] } }[] }[]).forEach((s) =>
+      s.deals.forEach((d) =>
+        (d.lead.additionalVehicleIds || []).forEach((id) => allAdditionalIds.add(id))
+      )
+    );
+    if (allAdditionalIds.size > 0) {
+      const additionalVehicles = await prisma.vehicle.findMany({
+        where: { id: { in: Array.from(allAdditionalIds) } },
+        select: { id: true, make: { select: { name: true } }, model: { select: { name: true } }, price: true, discountPrice: true },
+      });
+      const vehicleMap = new Map(additionalVehicles.map((v) => [v.id, v]));
+      (stages as { deals: { lead: { additionalVehicleIds?: string[]; additionalVehicles?: unknown[] } }[] }[]).forEach((s) =>
+        s.deals.forEach((d) => {
+          d.lead.additionalVehicles = (d.lead.additionalVehicleIds || [])
+            .map((id) => vehicleMap.get(id))
+            .filter(Boolean);
+        })
+      );
+    }
   } catch {
     stages = SALES_PIPELINE_STAGES.map((s) => ({
       id: s.name,

@@ -205,6 +205,7 @@ export async function POST(request: NextRequest) {
           customerId: customer.id,
           vehicleId: vehicle.id,
           source: `WEBSITE_${brand}` as "WEBSITE_NISSAN" | "WEBSITE_RENAULT" | "WEBSITE_AUTORULATE",
+          type: "TEST_DRIVE",
           brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
           status: "NEW",
           notes: `[Test Drive] ${model}\nProgramat: ${preferredDate} ${preferredTime}${message ? `\nMesaj: ${message}` : ""}`,

@@ -33,6 +33,61 @@ export async function PATCH(
       },
     });
 
+    // If test drive CONFIRMED, move lead/deal to "Test Drive Programat" and set lead to QUALIFIED
+    if (body.status === "CONFIRMED" && existing.vehicleId) {
+      const lead = await prisma.lead.findFirst({
+        where: {
+          customerId: existing.customerId,
+          vehicleId: existing.vehicleId,
+          status: { not: "LOST" },
+        },
+        include: { deals: true },
+      });
+
+      if (lead) {
+        // Update lead status to QUALIFIED
+        if (lead.status === "NEW") {
+          await prisma.lead.update({
+            where: { id: lead.id },
+            data: { status: "QUALIFIED", assignedToId: body.agentId || lead.assignedToId },
+          });
+        }
+
+        if (lead.deals.length > 0) {
+          const programatStage = await prisma.pipelineStage.findFirst({
+            where: {
+              brand: existing.brand,
+              pipelineType: "SALES",
+              name: "Test Drive Programat",
+            },
+          });
+
+          if (programatStage) {
+            const deal = lead.deals[0];
+            const oldStage = await prisma.pipelineStage.findUnique({
+              where: { id: deal.stageId },
+              select: { name: true },
+            });
+
+            await prisma.deal.update({
+              where: { id: deal.id },
+              data: { stageId: programatStage.id, assignedToId: body.agentId || deal.assignedToId },
+            });
+
+            await prisma.activity.create({
+              data: {
+                type: "STAGE_CHANGE",
+                content: `Mutat din "${oldStage?.name || "?"}" în "Test Drive Programat" — Test drive confirmat de admin`,
+                leadId: lead.id,
+                dealId: deal.id,
+                userId: session.user.id || null,
+              },
+            }).catch(() => {});
+          }
+        }
+      }
+    }
+
     // If test drive confirmed as COMPLETED, move lead/deal to "Test Drive Efectuat"
     if (body.status === "COMPLETED" && existing.vehicleId) {
       const lead = await prisma.lead.findFirst({

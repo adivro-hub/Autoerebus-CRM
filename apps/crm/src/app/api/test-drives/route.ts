@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const { vehicleId, customerId, scheduledAt, duration, agentId, notes, brand } = body;
+    const { vehicleId, customerId, scheduledAt, duration, agentId, notes, brand, contactName, contactPhone, contactEmail, status, adminOverride } = body;
 
     if (!vehicleId || !customerId || !scheduledAt) {
       return NextResponse.json(
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Vehiculul nu a fost gasit" }, { status: 404 });
     }
 
-    if (!vehicle.availableTestDrive) {
+    if (!vehicle.availableTestDrive && !adminOverride) {
       return NextResponse.json(
         { error: "Vehiculul nu este disponibil pentru test drive" },
         { status: 400 }
@@ -151,6 +151,10 @@ export async function POST(request: NextRequest) {
         agentId: agentId || null,
         notes: notes || null,
         brand: brand || vehicle.brand,
+        status: status || "SCHEDULED",
+        contactName: contactName || null,
+        contactPhone: contactPhone || null,
+        contactEmail: contactEmail || null,
       },
       include: {
         customer: { select: { firstName: true, lastName: true } },

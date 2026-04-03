@@ -386,12 +386,14 @@ model Lead {
   customerId  String
   vehicleId   String?
   source      LeadSource @default(OTHER)
+  type        String     @default("GENERAL") // GENERAL, TEST_DRIVE, PRICE_OFFER, CAR_INQUIRY, PRICE_ALERT, CALLBACK
   brand       Brand
   status      LeadStatus @default(NEW)
   assignedToId String?
   priority     Int       @default(0) // 0=normal, 1=high, 2=urgent
   notes       String?
   lostReason  String?
+  additionalVehicleIds String[] @default([])
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 

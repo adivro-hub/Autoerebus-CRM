@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
     scheduleTestDrive,
     testDriveDate,
     sendBrochure,
+    type,
   } = body;
 
   if (!firstName || !lastName || !brand || !source) {
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
         customerId: customer.id,
         vehicleId: vehicleId || null,
         source,
+        type: type || (scheduleTestDrive ? "TEST_DRIVE" : "GENERAL"),
         brand,
         status: "NEW",
         notes: notes || null,

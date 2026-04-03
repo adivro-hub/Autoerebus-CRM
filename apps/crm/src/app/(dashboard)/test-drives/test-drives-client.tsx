@@ -135,6 +135,12 @@ export default function TestDrivesClient({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Reschedule state
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleTime, setRescheduleTime] = useState("");
+  const [rescheduleSaving, setRescheduleSaving] = useState(false);
+
   // New customer inline form
   const [showNewCustomer, setShowNewCustomer] = useState(false);
   const [newCustomer, setNewCustomer] = useState({
@@ -343,6 +349,41 @@ export default function TestDrivesClient({
       setTestDrives((prev) => prev.filter((td) => td.id !== id));
     } catch {
       setError("Eroare la stergere");
+    }
+  }
+
+  function openReschedule(td: TestDrive) {
+    const d = new Date(td.scheduledAt);
+    setRescheduleId(td.id);
+    setRescheduleDate(toLocalDateStr(d));
+    setRescheduleTime(`${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`);
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleId || !rescheduleDate || !rescheduleTime) return;
+    setRescheduleSaving(true);
+    try {
+      const res = await fetch(`/api/test-drives/${rescheduleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: `${rescheduleDate}T${rescheduleTime}:00` }),
+      });
+      if (!res.ok) throw new Error("Eroare la reprogramare");
+      const updated = await res.json();
+      setTestDrives((prev) =>
+        prev.map((td) =>
+          td.id === rescheduleId
+            ? { ...td, scheduledAt: updated.scheduledAt || `${rescheduleDate}T${rescheduleTime}:00` }
+            : td
+        )
+      );
+      setRescheduleId(null);
+      setSuccess("Test drive reprogramat cu succes!");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch {
+      setError("Eroare la reprogramarea test drive-ului");
+    } finally {
+      setRescheduleSaving(false);
     }
   }
 
@@ -611,6 +652,15 @@ export default function TestDrivesClient({
                               <span className="text-xs text-muted-foreground">
                                 ({td.duration} min)
                               </span>
+                              {td.status !== "COMPLETED" && td.status !== "CANCELLED" && td.status !== "NO_SHOW" && (
+                                <button
+                                  onClick={() => openReschedule(td)}
+                                  className="ml-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                  title="Reprogramează"
+                                >
+                                  <Calendar className="h-3.5 w-3.5" />
+                                </button>
+                              )}
                             </div>
 
                             {/* Status dropdown */}
@@ -958,6 +1008,56 @@ export default function TestDrivesClient({
           customerId={selectedCustomerId}
           onClose={() => setSelectedCustomerId(null)}
         />
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl space-y-4">
+            <h3 className="text-lg font-semibold">Reprogramează Test Drive</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+              <input
+                type="date"
+                value={rescheduleDate}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ora</label>
+              <select
+                value={rescheduleTime}
+                onChange={(e) => setRescheduleTime(e.target.value)}
+                className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selectați ora</option>
+                {Array.from({ length: 17 }, (_, i) => {
+                  const h = Math.floor(i / 2) + 9;
+                  const m = i % 2 === 0 ? "00" : "30";
+                  const t = `${String(h).padStart(2, "0")}:${m}`;
+                  return <option key={t} value={t}>{t}</option>;
+                })}
+              </select>
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                onClick={() => setRescheduleId(null)}
+                className="px-4 py-2 text-sm rounded-md border hover:bg-gray-50 transition-colors"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleReschedule}
+                disabled={!rescheduleDate || !rescheduleTime || rescheduleSaving}
+                className="flex items-center gap-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {rescheduleSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />}
+                Salvează
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

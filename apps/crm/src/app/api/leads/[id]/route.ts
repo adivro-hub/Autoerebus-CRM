@@ -46,7 +46,34 @@ export async function GET(
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, data: lead });
+    // Fetch additional vehicles if any
+    let additionalVehicles: unknown[] = [];
+    if (lead.additionalVehicleIds && lead.additionalVehicleIds.length > 0) {
+      additionalVehicles = await prisma.vehicle.findMany({
+        where: { id: { in: lead.additionalVehicleIds } },
+        include: {
+          make: { select: { name: true } },
+          model: { select: { name: true } },
+          images: { take: 1, orderBy: { order: "asc" } },
+        },
+      });
+    }
+
+    // Fetch test drives for this customer (and optionally vehicle)
+    const testDrives = await prisma.testDrive.findMany({
+      where: {
+        customerId: lead.customerId,
+        brand: lead.brand,
+      },
+      include: {
+        vehicle: {
+          select: { id: true, title: true, make: { select: { name: true } }, model: { select: { name: true } } },
+        },
+      },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return NextResponse.json({ success: true, data: { ...lead, additionalVehicles, testDrives } });
   } catch (error: unknown) {
     console.error("Lead fetch error:", error);
     return NextResponse.json(
@@ -68,7 +95,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { status, assignedToId, notes, priority, pipelineStageId, lostReason, vehicleId } = body;
+  const { status, assignedToId, notes, priority, pipelineStageId, lostReason, vehicleId, additionalVehicleIds } = body;
 
   try {
     const lead = await prisma.lead.findUnique({ where: { id } });
@@ -85,6 +112,7 @@ export async function PATCH(
     if (priority !== undefined) updateData.priority = priority;
     if (lostReason !== undefined) updateData.lostReason = lostReason;
     if (vehicleId !== undefined) updateData.vehicleId = vehicleId || null;
+    if (additionalVehicleIds !== undefined) updateData.additionalVehicleIds = additionalVehicleIds;
 
     const updatedLead = await prisma.lead.update({
       where: { id },

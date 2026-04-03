@@ -157,6 +157,7 @@ export async function POST(request: NextRequest) {
         customerId: customer.id,
         vehicleId,
         source: leadSource as "WEBSITE_NISSAN" | "WEBSITE_RENAULT" | "WEBSITE_AUTORULATE" | "GOOGLE_ADS" | "FACEBOOK" | "AUTOVIT" | "OTHER",
+        type: type === "PRICE_OFFER" ? "PRICE_OFFER" : type === "TEST_DRIVE" ? "TEST_DRIVE" : type === "CALLBACK" ? "CALLBACK" : type === "TRADE_IN" ? "CAR_INQUIRY" : "CAR_INQUIRY",
         brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
         status: "NEW",
         priority: type === "CAR_INQUIRY" || type === "PRICE_OFFER" ? 1 : 0,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@autoerebus/database";
+import { auth } from "@/lib/auth";
 
-// Public endpoint — returns available time slots for a vehicle on a given date
-// No auth required (used by external websites)
+// Available for both external websites (via API key) and CRM admin (via session)
 
 const API_KEYS: Record<string, string> = {
   [process.env.NISSAN_API_KEY ?? "nissan-autoerebus-key"]: "NISSAN",
@@ -31,10 +31,12 @@ function generateAllSlots(): string[] {
 
 export async function GET(request: NextRequest) {
   try {
+    // Auth: API key (external) or session (CRM admin)
     const apiKey = request.headers.get("x-api-key");
     const brand = apiKey ? API_KEYS[apiKey] : null;
+    const session = !brand ? await auth() : null;
 
-    if (!brand) {
+    if (!brand && !session?.user) {
       return NextResponse.json(
         { success: false, error: "Invalid API key" },
         { status: 401 }
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
     if (!resolvedVehicleId && externalCarId) {
       const vehicle = await prisma.vehicle.findFirst({
         where: {
-          brand,
+          ...(brand && { brand }),
           autovitId: `autorulate:${externalCarId}`,
         },
         select: { id: true },

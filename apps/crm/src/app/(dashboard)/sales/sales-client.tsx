@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -44,15 +45,25 @@ interface Lead {
   id: string;
   status: string;
   source: string;
+  type: string;
   brand: string;
   priority: number;
   notes: string | null;
   createdAt: string;
   customer: { id: string; firstName: string; lastName: string; phone: string | null; email: string | null };
-  vehicle: { id: string; title: string | null; make: { name: string }; model: { name: string }; year: number } | null;
+  vehicle: { id: string; title: string | null; make: { name: string }; model: { name: string }; year: number; price: number | null; discountPrice: number | null } | null;
   assignedTo: { id: string; firstName: string; lastName: string } | null;
   _count: { deals: number };
 }
+
+const LEAD_TYPE_CONFIG: Record<string, { label: string; style: string }> = {
+  TEST_DRIVE: { label: "Test Drive", style: "bg-green-600 text-white" },
+  PRICE_OFFER: { label: "Ofertă Preț", style: "bg-amber-500 text-white" },
+  CAR_INQUIRY: { label: "Cerere Info", style: "bg-blue-600 text-white" },
+  PRICE_ALERT: { label: "Alertă Preț", style: "bg-purple-600 text-white" },
+  CALLBACK: { label: "Callback", style: "bg-gray-700 text-white" },
+  GENERAL: { label: "General", style: "bg-gray-200 text-gray-700" },
+};
 
 interface PipelineStage {
   id: string;
@@ -94,12 +105,12 @@ interface ActiveTestDrive {
 // ─── Constants ─────────────────────────────────────────
 
 const STATUS_COLORS: Record<string, string> = {
-  NEW: "bg-blue-100 text-blue-800",
-  CONTACTED: "bg-violet-100 text-violet-800",
-  QUALIFIED: "bg-amber-100 text-amber-800",
-  NEGOTIATION: "bg-orange-100 text-orange-800",
-  WON: "bg-emerald-100 text-emerald-800",
-  LOST: "bg-gray-100 text-gray-800",
+  NEW: "border border-blue-400 text-gray-800 bg-white",
+  CONTACTED: "border border-violet-400 text-gray-800 bg-white",
+  QUALIFIED: "border border-amber-400 text-gray-800 bg-white",
+  NEGOTIATION: "border border-orange-400 text-gray-800 bg-white",
+  WON: "border border-emerald-400 text-gray-800 bg-white",
+  LOST: "border border-gray-300 text-gray-500 bg-white",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -126,10 +137,10 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const BRAND_BADGE_COLORS: Record<string, string> = {
-  NISSAN: "bg-red-100 text-red-800",
-  RENAULT: "bg-yellow-100 text-yellow-800",
-  AUTORULATE: "bg-blue-100 text-blue-800",
-  SERVICE: "bg-green-100 text-green-800",
+  NISSAN: "border border-gray-900 text-gray-900",
+  RENAULT: "border border-gray-900 text-gray-900",
+  AUTORULATE: "border border-gray-900 text-gray-900",
+  SERVICE: "border border-gray-900 text-gray-900",
 };
 
 const BRAND_SHORT_LABELS: Record<string, string> = {
@@ -177,7 +188,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
   DOCUMENT: "Document",
 };
 
-const STALE_DAYS = 7; // Lead is stale after 7 days in same stage
+const STALE_HOURS = 8; // Lead is stale after 8 hours in new leads
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("ro-RO", {
@@ -189,8 +200,8 @@ function formatDate(d: string) {
   });
 }
 
-function daysSince(d: string) {
-  return Math.floor((Date.now() - new Date(d).getTime()) / 86400000);
+function hoursSince(d: string) {
+  return (Date.now() - new Date(d).getTime()) / 3600000;
 }
 
 // ─── Move Pipeline Dropdown (shared) ───────────────────
@@ -404,14 +415,16 @@ function LeadCard({
   testDrive,
   onMoved,
   onSelect,
+  showBrand,
 }: {
   lead: Lead;
   stages: PipelineStage[];
   testDrive?: ActiveTestDrive | null;
   onMoved: (leadId: string) => void;
   onSelect: (leadId: string) => void;
+  showBrand?: boolean;
 }) {
-  const stale = daysSince(lead.createdAt) >= STALE_DAYS;
+  const stale = hoursSince(lead.createdAt) >= STALE_HOURS;
   const [tdAction, setTdAction] = useState<"confirm" | "cancel" | "reschedule" | null>(null);
   const [tdLoading, setTdLoading] = useState(false);
   const [tdFeedback, setTdFeedback] = useState("");
@@ -475,90 +488,67 @@ function LeadCard({
 
   return (
     <Card
-      className={`border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-amber-400" : ""}`}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-red-500" : ""}`}
       onClick={() => onSelect(lead.id)}
     >
-      <CardContent className="p-4">
-        {stale && (
-          <div className="flex items-center gap-1 text-amber-600 text-xs mb-2">
-            <AlertTriangle className="h-3 w-3" />
-            Lead vechi ({daysSince(lead.createdAt)} zile)
-          </div>
-        )}
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-sm">
-              {lead.customer.firstName} {lead.customer.lastName}
+      <CardContent className="p-5">
+        {/* stale indicator via clock icon tooltip */}
+        <div className="flex items-center justify-between">
+          <span className="flex items-center gap-1.5 font-medium text-sm text-gray-900">
+            <User className="h-3.5 w-3.5 text-gray-400" />
+            {lead.customer.firstName} {lead.customer.lastName}
+          </span>
+          <div className="flex items-center gap-1">
+            {LEAD_TYPE_CONFIG[lead.type] && (
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_TYPE_CONFIG[lead.type].style}`}>
+                {LEAD_TYPE_CONFIG[lead.type].label}
+              </span>
+            )}
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BRAND_BADGE_COLORS[lead.brand] || "border border-gray-300 text-gray-700"}`}>
+              {BRAND_SHORT_LABELS[lead.brand] || lead.brand}
             </span>
           </div>
-          <Badge className="text-xs px-1.5" variant="outline">
-            {SOURCE_LABELS[lead.source] || lead.source}
-          </Badge>
         </div>
 
         {lead.vehicle && (
-          <Link
-            href={`/inventory/${lead.vehicle.id}/edit`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1.5 mt-2 text-sm text-blue-600 hover:underline"
-          >
-            <Car className="h-3.5 w-3.5" />
-            {lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name} ${lead.vehicle.year}`}
-          </Link>
+          <p className="mt-1 flex items-center gap-1.5 text-sm truncate" style={{ color: "#333" }}>
+            <Car className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+            {lead.vehicle.make.name} {lead.vehicle.model.name} {lead.vehicle.year}
+            {(lead.vehicle.discountPrice || lead.vehicle.price) ? ` · ${(lead.vehicle.discountPrice || lead.vehicle.price)!.toLocaleString("ro-RO")} €` : ""}
+          </p>
         )}
-
-        {lead.notes && (
-          <div className="flex items-start gap-1.5 mt-2 text-xs text-muted-foreground">
-            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0" />
-            <span className="line-clamp-2">{lead.notes}</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
-          {lead.customer.phone && (
-            <a href={`tel:${lead.customer.phone}`} className="flex items-center gap-1 text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>
-              <Phone className="h-3 w-3" />
-              {lead.customer.phone}
-            </a>
-          )}
-          {lead.assignedTo && (
-            <span>Agent: {lead.assignedTo.firstName} {lead.assignedTo.lastName}</span>
-          )}
-        </div>
 
         {/* Test Drive section */}
         {testDrive && (
-          <div className="mt-3 pt-2 border-t space-y-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <Calendar className="h-3.5 w-3.5 text-cyan-600" />
-              <span className="text-xs font-medium text-cyan-700">
-                Test Drive — {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between rounded-md bg-green-600 px-3 py-2">
+              <span className="text-sm font-medium text-white">
+                {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} — {new Date(testDrive.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
               </span>
-              <Badge className={`text-xs ${testDrive.status === "CONFIRMED" ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"}`}>
-                {testDrive.status === "CONFIRMED" ? "Confirmat" : "Programat"}
-              </Badge>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTdAction("confirm")}
-                className="flex-1 flex items-center justify-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-1.5 text-xs font-medium transition-colors"
-              >
-                <Check className="h-3 w-3" /> Confirmă
-              </button>
-              <button
-                onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
-                className="flex items-center gap-1 rounded-md border px-2 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
-              >
-                <Clock className="h-3 w-3" /> Modifică data
-              </button>
-              <button
-                onClick={() => setTdAction("cancel")}
-                className="flex items-center gap-1 rounded-md border border-red-200 text-red-600 hover:bg-red-50 px-2 py-1.5 text-xs font-medium transition-colors"
-              >
-                <X className="h-3 w-3" /> Anulează
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <button
+                  onClick={() => setTdAction("confirm")}
+                  className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                  title="Confirmă programarea"
+                >
+                  <Check className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">Confirmă</span>
+                </button>
+                <button
+                  onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
+                  className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
+                  title="Modifică data"
+                >
+                  <Calendar className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setTdAction("cancel")}
+                  className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
+                  title="Anulează"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
             {tdAction && (
@@ -624,10 +614,23 @@ function LeadCard({
           </div>
         )}
 
-        <div className="flex items-center justify-between mt-3 pt-2 border-t">
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {formatDate(lead.createdAt)}
+        <div className="flex items-center justify-end mt-3 pt-2 border-t">
+          <span
+            className={`flex items-center gap-1 cursor-default mr-auto text-xs ${stale ? "text-amber-500" : "text-gray-400"}`}
+            title={`Adăugat pe ${formatDate(lead.createdAt)}`}
+          >
+            <Clock className="h-3.5 w-3.5 shrink-0" />
+            {(() => {
+              const diff = Date.now() - new Date(lead.createdAt).getTime();
+              const mins = Math.floor(diff / 60000);
+              const hrs = Math.floor(mins / 60);
+              const days = Math.floor(hrs / 24);
+              const remHrs = hrs % 24;
+              const remMins = mins % 60;
+              if (days > 0) return `${days}z ${remHrs}h ${remMins}m`;
+              if (hrs > 0) return `${hrs}h ${remMins}m`;
+              return `${mins}m`;
+            })()}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -677,14 +680,14 @@ function PipelineDealCard({
 }) {
   return (
     <Card
-      className={`border-l-4 ${STAGE_BORDER_COLORS[stageName] ?? "border-l-gray-300"} cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-amber-400" : ""}`}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-red-500" : ""}`}
       onClick={() => onSelect(deal.lead.id)}
     >
-      <CardContent className="p-3">
+      <CardContent className="p-5">
         {stale && (
-          <div className="flex items-center gap-1 text-amber-600 text-xs mb-1">
+          <div className="flex items-center gap-1 text-red-600 text-xs mb-1">
             <AlertTriangle className="h-3 w-3" />
-            &gt;{STALE_DAYS} zile
+            &gt;{STALE_HOURS}h neprocesat
           </div>
         )}
         <div className="flex items-start justify-between">
@@ -698,16 +701,17 @@ function PipelineDealCard({
           )}
         </div>
         {deal.lead.vehicle && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground truncate">
             {deal.lead.vehicle.make.name} {deal.lead.vehicle.model.name}
+            {(deal.lead.vehicle.discountPrice || deal.lead.vehicle.price) ? ` — ${((deal.lead.vehicle.discountPrice || deal.lead.vehicle.price) as number).toLocaleString("ro-RO")} €` : ""}
           </p>
         )}
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm font-semibold">
-            {deal.value ? formatCurrency(deal.value, deal.currency) : "-"}
-          </span>
-          <span className="text-xs text-muted-foreground">{deal.probability}%</span>
-        </div>
+        {(deal.lead as Record<string, unknown>).additionalVehicles && ((deal.lead as Record<string, unknown>).additionalVehicles as { make: { name: string }; model: { name: string }; price: number | null; discountPrice: number | null }[]).map((v, i) => (
+          <p key={i} className="text-xs text-muted-foreground truncate">
+            {v.make.name} {v.model.name}
+            {(v.discountPrice || v.price) ? ` — ${(v.discountPrice || v.price)!.toLocaleString("ro-RO")} €` : ""}
+          </p>
+        ))}
         {deal.assignedTo && (
           <p className="mt-1 text-xs text-muted-foreground">
             Agent: {deal.assignedTo.firstName} {deal.assignedTo.lastName}
@@ -769,6 +773,26 @@ interface LeadDetail {
     createdAt: string;
     user: { firstName: string; lastName: string } | null;
   }[];
+  additionalVehicleIds: string[];
+  testDrives: {
+    id: string;
+    status: string;
+    scheduledAt: string;
+    duration: number;
+    contactName: string | null;
+    contactPhone: string | null;
+    feedback: string | null;
+    notes: string | null;
+    vehicle: { id: string; title: string | null; make: { name: string }; model: { name: string } } | null;
+  }[];
+  additionalVehicles: {
+    id: string;
+    title: string | null;
+    year: number;
+    make: { name: string };
+    model: { name: string };
+    images: { url: string }[];
+  }[];
 }
 
 function LeadDetailOverlay({
@@ -801,6 +825,23 @@ function LeadDetailOverlay({
   const [vSearch, setVSearch] = useState("");
   const [vResults, setVResults] = useState<{ id: string; title: string | null; make: { name: string }; model: { name: string }; year: number; price: number | null; discountPrice: number | null; currency: string }[]>([]);
   const [savingVehicle, setSavingVehicle] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [custForm, setCustForm] = useState({ firstName: "", lastName: "", phone: "", email: "" });
+  const [savingCustomer, setSavingCustomer] = useState(false);
+  // TD confirm with agent
+  const [tdConfirmingId, setTdConfirmingId] = useState<string | null>(null);
+  const [tdConfirmAgent, setTdConfirmAgent] = useState("");
+  // TD scheduler
+  const [tdScheduling, setTdScheduling] = useState(false);
+  const [tdReschedulingId, setTdReschedulingId] = useState<string | null>(null); // TD id being rescheduled
+  const [tdRescheduleVehicleId, setTdRescheduleVehicleId] = useState<string | null>(null);
+  const [tdSelectedVehicle, setTdSelectedVehicle] = useState<string | null>(null);
+  const [tdSelectedDate, setTdSelectedDate] = useState<Date | null>(null);
+  const [tdCalendarMonth, setTdCalendarMonth] = useState(new Date());
+  const [tdSlots, setTdSlots] = useState<string[]>([]);
+  const [tdLoadingSlots, setTdLoadingSlots] = useState(false);
+  const [tdSelectedTime, setTdSelectedTime] = useState<string | null>(null);
+  const [tdSaving, setTdSaving] = useState(false);
 
   const fetchLead = useCallback(async () => {
     try {
@@ -944,11 +985,11 @@ function LeadDetailOverlay({
   const availableStages = lead ? stages.filter((s) => !s.brand || s.brand === lead.brand) : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative h-full w-full max-w-lg overflow-y-auto bg-white shadow-xl animate-in slide-in-from-right">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 rounded-t-xl">
           <h2 className="text-lg font-semibold">Detalii Lead</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
         </div>
@@ -961,60 +1002,186 @@ function LeadDetailOverlay({
           <div className="p-4 space-y-5">
             {/* Customer */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</h3>
-              <div className="rounded-lg border p-3 space-y-2">
-                <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</h3>
+                {!editingCustomer && (
                   <button
-                    onClick={() => onCustomerClick?.(lead.customer.id)}
-                    className="font-medium text-sm text-blue-600 hover:underline"
+                    onClick={() => {
+                      setCustForm({
+                        firstName: lead.customer.firstName,
+                        lastName: lead.customer.lastName,
+                        phone: lead.customer.phone || "",
+                        email: lead.customer.email || "",
+                      });
+                      setEditingCustomer(true);
+                    }}
+                    className="text-xs text-blue-600 hover:underline"
                   >
-                    {lead.customer.firstName} {lead.customer.lastName}
+                    Schimbă
                   </button>
-                </div>
-                {lead.customer.phone && (
-                  <a href={`tel:${lead.customer.phone}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                    <Phone className="h-3.5 w-3.5" />{lead.customer.phone}
-                  </a>
-                )}
-                {lead.customer.email && (
-                  <a href={`mailto:${lead.customer.email}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                    <Mail className="h-3.5 w-3.5" />{lead.customer.email}
-                  </a>
                 )}
               </div>
+              {editingCustomer ? (
+                <div className="rounded-lg border p-3 space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Prenume</label>
+                      <input
+                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        value={custForm.firstName}
+                        onChange={(e) => setCustForm((p) => ({ ...p, firstName: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Nume</label>
+                      <input
+                        className="w-full rounded-md border px-2 py-1.5 text-sm"
+                        value={custForm.lastName}
+                        onChange={(e) => setCustForm((p) => ({ ...p, lastName: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Telefon</label>
+                    <input
+                      className="w-full rounded-md border px-2 py-1.5 text-sm"
+                      value={custForm.phone}
+                      onChange={(e) => setCustForm((p) => ({ ...p, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground">Email</label>
+                    <input
+                      className="w-full rounded-md border px-2 py-1.5 text-sm"
+                      value={custForm.email}
+                      onChange={(e) => setCustForm((p) => ({ ...p, email: e.target.value }))}
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={savingCustomer}
+                      onClick={async () => {
+                        setSavingCustomer(true);
+                        try {
+                          await fetch(`/api/customers/${lead.customer.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(custForm),
+                          });
+                          await fetchLead();
+                          setEditingCustomer(false);
+                          onLeadUpdated?.();
+                        } catch {}
+                        setSavingCustomer(false);
+                      }}
+                      className="rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white hover:bg-gray-800"
+                    >
+                      {savingCustomer ? "..." : "Salvează"}
+                    </button>
+                    <button
+                      onClick={() => setEditingCustomer(false)}
+                      className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                    >
+                      Anulează
+                    </button>
+                  </div>
+                </div>
+              ) : (
+              <div
+                className="rounded-lg border p-3 space-y-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => onCustomerClick?.(lead.customer.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-sm text-gray-900">
+                    {lead.customer.firstName} {lead.customer.lastName}
+                  </span>
+                </div>
+                {lead.customer.phone && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Phone className="h-3.5 w-3.5" />{lead.customer.phone}
+                  </div>
+                )}
+                {lead.customer.email && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail className="h-3.5 w-3.5" />{lead.customer.email}
+                  </div>
+                )}
+                {lead.notes && (() => {
+                  // Extract client message from notes
+                  const lines = lead.notes!.split("\n");
+                  const msgLine = lines.find((l: string) => l.startsWith("Mesaj:"));
+                  const msg = msgLine ? msgLine.replace("Mesaj: ", "").trim() : null;
+                  if (!msg) return null;
+                  return (
+                    <div className="mt-2 pt-2 border-t">
+                      <p className="text-xs text-muted-foreground mb-1">Mesajul clientului:</p>
+                      <p className="text-sm text-gray-700 italic">&ldquo;{msg}&rdquo;</p>
+                    </div>
+                  );
+                })()}
+              </div>
+              )}
             </div>
 
-            {/* Vehicle */}
+            {/* Vehicles */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Interesat de</h3>
-                {lead.vehicle && !editingVehicle && (
-                  <div className="flex gap-2">
-                    <button onClick={() => setEditingVehicle(true)} className="text-xs text-blue-600 hover:underline">Schimbă</button>
-                    <button onClick={() => updateVehicle(null)} className="text-xs text-red-600 hover:underline">
-                      {savingVehicle ? "..." : "Șterge"}
-                    </button>
-                  </div>
-                )}
-                {!lead.vehicle && !editingVehicle && (
+                {!editingVehicle && (
                   <button onClick={() => setEditingVehicle(true)} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
                     <Plus className="h-3 w-3" /> Adaugă mașină
                   </button>
                 )}
               </div>
 
+              {/* Primary vehicle */}
               {lead.vehicle && !editingVehicle && (
-                <Link href={`/inventory/${lead.vehicle.id}/edit`} className="block rounded-lg border p-3 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    {lead.vehicle.images?.[0] && <img src={lead.vehicle.images[0].url} alt="" className="h-16 w-24 rounded-md object-cover" />}
-                    <div>
-                      <p className="font-medium text-sm text-blue-600">{lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name}`}</p>
-                      <p className="text-xs text-muted-foreground">An: {lead.vehicle.year}</p>
+                <div className="flex items-center gap-2">
+                  <Link href={`/inventory/${lead.vehicle.id}/edit`} className="flex-1 block rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {lead.vehicle.images?.[0] && <img src={lead.vehicle.images[0].url} alt="" className="h-14 w-20 rounded-md object-cover" />}
+                      <div>
+                        <p className="font-medium text-sm">{lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name}`}</p>
+                        <p className="text-xs text-muted-foreground">An: {lead.vehicle.year}</p>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                  <button onClick={() => updateVehicle(null)} className="shrink-0 rounded-md p-1.5 text-red-500 hover:bg-red-50" title="Șterge">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               )}
+
+              {/* Additional vehicles */}
+              {(lead.additionalVehicles as typeof lead.vehicle[])?.map((v: typeof lead.vehicle) => v && (
+                <div key={v.id} className="flex items-center gap-2">
+                  <Link href={`/inventory/${v.id}/edit`} className="flex-1 block rounded-lg border p-3 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      {v.images?.[0] && <img src={v.images[0].url} alt="" className="h-14 w-20 rounded-md object-cover" />}
+                      <div>
+                        <p className="font-medium text-sm">{v.title || `${v.make.name} ${v.model.name}`}</p>
+                        <p className="text-xs text-muted-foreground">An: {v.year}</p>
+                      </div>
+                    </div>
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      const newIds = (lead.additionalVehicleIds || []).filter((id: string) => id !== v.id);
+                      await fetch(`/api/leads/${lead.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ additionalVehicleIds: newIds }),
+                      });
+                      fetchLead();
+                      onLeadUpdated?.();
+                    }}
+                    className="shrink-0 rounded-md p-1.5 text-red-500 hover:bg-red-50" title="Șterge"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
 
               {editingVehicle && (
                 <div className="rounded-lg border p-3 space-y-2">
@@ -1031,7 +1198,29 @@ function LeadDetailOverlay({
                   {vResults.length > 0 && (
                     <div className="rounded-md border max-h-48 overflow-y-auto">
                       {vResults.map((v) => (
-                        <button key={v.id} onClick={() => updateVehicle(v.id)}
+                        <button key={v.id} onClick={async () => {
+                          // If no primary vehicle, set as primary
+                          if (!lead.vehicle) {
+                            await updateVehicle(v.id);
+                          } else {
+                            // Add to additional vehicles
+                            const currentIds = lead.additionalVehicleIds || [];
+                            if (!currentIds.includes(v.id) && v.id !== lead.vehicle?.id) {
+                              const res = await fetch(`/api/leads/${lead.id}`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ additionalVehicleIds: [...currentIds, v.id] }),
+                              });
+                              if (res.ok) {
+                                await fetchLead();
+                                onLeadUpdated?.();
+                              }
+                            }
+                          }
+                          setEditingVehicle(false);
+                          setVSearch("");
+                          setVResults([]);
+                        }}
                           className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center justify-between border-b last:border-0">
                           <span>{v.make.name} {v.model.name} {v.year}</span>
                           {(v.discountPrice || v.price) && (
@@ -1051,35 +1240,422 @@ function LeadDetailOverlay({
               )}
             </div>
 
-            {/* Schedule Test Drive from overlay */}
-            {lead.vehicle && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Test Drive</h3>
+            {/* Test Drive section */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Test Drive</h3>
+
+              {/* Existing test drives (hide cancelled/no-show) */}
+              {lead.testDrives && lead.testDrives.filter((td) => !["CANCELLED", "NO_SHOW"].includes(td.status)).length > 0 ? (
+                <div className="space-y-2">
+                  {lead.testDrives.filter((td) => !["CANCELLED", "NO_SHOW"].includes(td.status)).map((td) => {
+                    const isActive = ["SCHEDULED", "CONFIRMED"].includes(td.status);
+                    const statusLabel: Record<string, string> = {
+                      SCHEDULED: "Neconfirmat",
+                      CONFIRMED: "Confirmat",
+                      COMPLETED: "Efectuat",
+                      CANCELLED: "Anulat",
+                      NO_SHOW: "Neprezentare",
+                    };
+                    const statusColor: Record<string, string> = {
+                      SCHEDULED: "bg-amber-100 text-amber-700",
+                      CONFIRMED: "bg-green-100 text-green-700",
+                      COMPLETED: "bg-blue-100 text-blue-700",
+                      CANCELLED: "bg-red-100 text-red-700",
+                      NO_SHOW: "bg-gray-100 text-gray-700",
+                    };
+                    return (
+                      <div key={td.id} className="rounded-lg border p-3 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <Car className="h-4 w-4 text-gray-400 shrink-0" />
+                            <span className="text-sm font-medium text-gray-900 truncate">
+                              {td.vehicle ? (td.vehicle.title || `${td.vehicle.make.name} ${td.vehicle.model.name}`) : "—"}
+                            </span>
+                            <span className="text-xs text-gray-500 shrink-0">
+                              {new Date(td.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "short" })} · {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
+                          {isActive && tdReschedulingId !== td.id && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              {td.status === "SCHEDULED" && (
+                                <button
+                                  onClick={() => { setTdConfirmingId(td.id); setTdConfirmAgent(""); }}
+                                  className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs flex items-center gap-1"
+                                  title="Confirmă"
+                                >
+                                  <Check className="h-3 w-3" /> Confirmă
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setTdReschedulingId(td.id);
+                                  setTdRescheduleVehicleId(td.vehicle?.id || null);
+                                  setTdSelectedDate(null);
+                                  setTdSelectedTime(null);
+                                  setTdSlots([]);
+                                  setTdCalendarMonth(new Date());
+                                }}
+                                className="rounded-md bg-gray-800 hover:bg-gray-900 text-white p-1 text-xs"
+                                title="Modifică data"
+                              >
+                                <Calendar className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (confirm("Sigur vrei să anulezi acest test drive?")) {
+                                    await fetch(`/api/test-drives/${td.id}`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "CANCELLED", feedback: "Anulat de agent" }),
+                                    });
+                                    await fetchLead();
+                                    onLeadUpdated?.();
+                                  }
+                                }}
+                                className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 text-xs"
+                                title="Anulează"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        {/* Confirm with agent */}
+                        {tdConfirmingId === td.id && (
+                          <div className="mt-2 rounded-lg border bg-green-50 p-3 space-y-2">
+                            <p className="text-xs font-medium text-green-800">Alege agentul responsabil:</p>
+                            <select
+                              value={tdConfirmAgent}
+                              onChange={(e) => setTdConfirmAgent(e.target.value)}
+                              className="w-full rounded-md border px-3 py-1.5 text-sm"
+                            >
+                              <option value="">— Selectează agent —</option>
+                              {agents.map((a) => (
+                                <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>
+                              ))}
+                            </select>
+                            <div className="flex gap-2">
+                              <button
+                                disabled={!tdConfirmAgent}
+                                onClick={async () => {
+                                  await fetch(`/api/test-drives/${td.id}`, {
+                                    method: "PATCH",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ status: "CONFIRMED", agentId: tdConfirmAgent }),
+                                  });
+                                  setTdConfirmingId(null);
+                                  await fetchLead();
+                                  onLeadUpdated?.();
+                                }}
+                                className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                              >
+                                Confirmă
+                              </button>
+                              <button
+                                onClick={() => setTdConfirmingId(null)}
+                                className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                              >
+                                Anulează
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {/* Reschedule calendar inline */}
+                        {tdReschedulingId === td.id && (() => {
+                          const vId = tdRescheduleVehicleId;
+                          const fetchRescheduleSlots = async (date: Date) => {
+                            if (!vId) return;
+                            setTdLoadingSlots(true);
+                            setTdSelectedTime(null);
+                            try {
+                              const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                              const res = await fetch(`/api/test-drives/slots?vehicleId=${vId}&date=${dateStr}`);
+                              if (res.ok) { const json = await res.json(); const slots = (json.data?.slots || json.slots || []).filter((s: { available?: boolean }) => s.available !== false).map((s: { time: string }) => s.time); setTdSlots(slots); }
+                            } catch { setTdSlots([]); }
+                            setTdLoadingSlots(false);
+                          };
+                          const today2 = new Date(); today2.setHours(0,0,0,0);
+                          const maxD = new Date(today2); maxD.setDate(maxD.getDate() + 30);
+                          const y2 = tdCalendarMonth.getFullYear(), m2 = tdCalendarMonth.getMonth();
+                          const fd = new Date(y2, m2, 1).getDay();
+                          const dim = new Date(y2, m2 + 1, 0).getDate();
+                          const so = fd === 0 ? 6 : fd - 1;
+                          return (
+                            <div className="mt-2 rounded-lg border bg-gray-50 p-3 space-y-3">
+                              <p className="text-xs font-medium text-gray-700">Modifică data și ora:</p>
+                              {/* Calendar */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <button onClick={() => setTdCalendarMonth(new Date(y2, m2 - 1, 1))} className="p-1 rounded hover:bg-muted text-sm">&larr;</button>
+                                  <span className="text-xs font-medium capitalize">{tdCalendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}</span>
+                                  <button onClick={() => setTdCalendarMonth(new Date(y2, m2 + 1, 1))} className="p-1 rounded hover:bg-muted text-sm">&rarr;</button>
+                                </div>
+                                <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                                  {["Lu","Ma","Mi","Jo","Vi","Sâ","Du"].map((d) => <span key={d} className="text-muted-foreground font-medium py-0.5">{d}</span>)}
+                                  {Array.from({ length: so }).map((_, i) => <span key={`e-${i}`} />)}
+                                  {Array.from({ length: dim }).map((_, i) => {
+                                    const day = i + 1;
+                                    const dd = new Date(y2, m2, day); dd.setHours(0,0,0,0);
+                                    const isPast = dd < today2;
+                                    const isFar = dd > maxD;
+                                    const isSel = tdSelectedDate?.getDate() === day && tdSelectedDate?.getMonth() === m2 && tdSelectedDate?.getFullYear() === y2;
+                                    return (
+                                      <button key={day} disabled={isPast || isFar}
+                                        onClick={() => { setTdSelectedDate(dd); fetchRescheduleSlots(dd); }}
+                                        className={`py-1 rounded text-xs ${isSel ? "bg-gray-900 text-white" : isPast || isFar ? "text-gray-300" : "hover:bg-muted"}`}
+                                      >{day}</button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                              {/* Slots */}
+                              {tdSelectedDate && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">Ore disponibile — {tdSelectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}</p>
+                                  {tdLoadingSlots ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" /> :
+                                    tdSlots.length === 0 ? <p className="text-xs text-red-500 italic">Niciun slot disponibil.</p> : (
+                                      <div className="grid grid-cols-4 gap-1">
+                                        {tdSlots.map((s) => (
+                                          <button key={s} onClick={() => setTdSelectedTime(s)}
+                                            className={`py-1 rounded text-xs ${tdSelectedTime === s ? "bg-gray-900 text-white" : "border hover:bg-muted"}`}
+                                          >{s}</button>
+                                        ))}
+                                      </div>
+                                    )}
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                {tdSelectedTime && (
+                                  <button onClick={async () => {
+                                    const dateStr = `${tdSelectedDate!.getFullYear()}-${String(tdSelectedDate!.getMonth() + 1).padStart(2, "0")}-${String(tdSelectedDate!.getDate()).padStart(2, "0")}`;
+                                    await fetch(`/api/test-drives/${td.id}`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ scheduledAt: new Date(`${dateStr}T${tdSelectedTime}:00`).toISOString() }),
+                                    });
+                                    setTdReschedulingId(null);
+                                    await fetchLead();
+                                    onLeadUpdated?.();
+                                  }} className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs font-medium">
+                                    Salvează
+                                  </button>
+                                )}
+                                <button onClick={() => { setTdReschedulingId(null); setTdSelectedDate(null); setTdSelectedTime(null); setTdSlots([]); }}
+                                  className="rounded-md border px-3 py-1 text-xs hover:bg-muted">Anulează</button>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="rounded-lg border p-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-cyan-600" />
-                    <input
-                      type="datetime-local"
-                      min={new Date().toISOString().slice(0, 16)}
-                      className="flex-1 rounded-md border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                      id={`td-date-${leadId}`}
-                    />
-                    <button
-                      onClick={() => {
-                        const input = document.getElementById(`td-date-${leadId}`) as HTMLInputElement;
-                        if (input?.value) scheduleTestDriveFromOverlay(input.value);
-                      }}
-                      disabled={savingVehicle}
-                      className="rounded-md bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
-                    >
-                      {savingVehicle ? <Loader2 className="h-4 w-4 animate-spin" /> : "Programează"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-xs text-muted-foreground italic">Niciun test drive programat.</p>
+              )}
+
+              {/* Schedule new test drive */}
+              {(() => {
+                // Collect vehicles without active test drives
+                const activeTdVehicleIds = new Set(
+                  (lead.testDrives || [])
+                    .filter((td) => ["SCHEDULED", "CONFIRMED"].includes(td.status))
+                    .map((td) => td.vehicle?.id)
+                    .filter(Boolean)
+                );
+                const allVehicles: { id: string; label: string }[] = [];
+                if (lead.vehicle && !activeTdVehicleIds.has(lead.vehicle.id)) {
+                  allVehicles.push({ id: lead.vehicle.id, label: lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name}` });
+                }
+                if (lead.additionalVehicles) {
+                  (lead.additionalVehicles as typeof lead.vehicle[]).forEach((v) => {
+                    if (v && !allVehicles.find((av) => av.id === v.id) && !activeTdVehicleIds.has(v.id)) {
+                      allVehicles.push({ id: v.id, label: v.title || `${v.make.name} ${v.model.name}` });
+                    }
+                  });
+                }
+                if (allVehicles.length === 0) return null;
+
+                // Auto-select if only one vehicle
+                const effectiveVehicle = allVehicles.length === 1 ? allVehicles[0].id : tdSelectedVehicle;
+
+                const fetchSlots = async (vehicleId: string, date: Date) => {
+                  setTdLoadingSlots(true);
+                  setTdSelectedTime(null);
+                  try {
+                    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                    const res = await fetch(`/api/test-drives/slots?vehicleId=${vehicleId}&date=${dateStr}`);
+                    if (res.ok) {
+                      const data = await res.json();
+                      const slots2 = (data.data?.slots || data.slots || []).filter((s: { available?: boolean }) => s.available !== false).map((s: { time: string }) => s.time); setTdSlots(slots2);
+                    }
+                  } catch { setTdSlots([]); }
+                  setTdLoadingSlots(false);
+                };
+
+                const handleSave = async () => {
+                  if (!effectiveVehicle || !tdSelectedDate || !tdSelectedTime || !lead) return;
+                  setTdSaving(true);
+                  const dateStr = `${tdSelectedDate.getFullYear()}-${String(tdSelectedDate.getMonth() + 1).padStart(2, "0")}-${String(tdSelectedDate.getDate()).padStart(2, "0")}`;
+                  try {
+                    await fetch("/api/test-drives", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        vehicleId: effectiveVehicle,
+                        customerId: lead.customer.id,
+                        scheduledAt: `${dateStr}T${tdSelectedTime}:00`,
+                        brand: lead.brand,
+                        contactName: `${lead.customer.firstName} ${lead.customer.lastName}`,
+                        contactPhone: lead.customer.phone,
+                        contactEmail: lead.customer.email,
+                        status: "CONFIRMED",
+                        adminOverride: true,
+                      }),
+                    });
+                    setTdScheduling(false);
+                    setTdSelectedVehicle(null);
+                    setTdSelectedDate(null);
+                    setTdSelectedTime(null);
+                    setTdSlots([]);
+                    await fetchLead();
+                    onLeadUpdated?.();
+                  } catch { /* ignore */ }
+                  setTdSaving(false);
+                };
+
+                // Calendar helpers
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const maxDate = new Date(today);
+                maxDate.setDate(maxDate.getDate() + 30);
+                const year = tdCalendarMonth.getFullYear();
+                const month = tdCalendarMonth.getMonth();
+                const firstDay = new Date(year, month, 1).getDay();
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Monday first
+
+                return (
+                  <>
+                    {!tdScheduling ? (
+                      <button
+                        onClick={() => {
+                          setTdScheduling(true);
+                          setTdSelectedVehicle(allVehicles.length === 1 ? allVehicles[0].id : null);
+                          setTdCalendarMonth(new Date());
+                        }}
+                        className="w-full rounded-lg border border-dashed p-3 text-sm text-gray-500 hover:bg-muted/50 hover:text-gray-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" /> Programează test drive
+                      </button>
+                    ) : (
+                      <div className="rounded-lg border p-4 space-y-3">
+                        {/* Step 1: Choose vehicle if multiple */}
+                        {allVehicles.length > 1 && (
+                          <div>
+                            <label className="text-xs text-muted-foreground mb-1 block">Alege mașina</label>
+                            <div className="space-y-1">
+                              {allVehicles.map((v) => (
+                                <button
+                                  key={v.id}
+                                  onClick={() => { setTdSelectedVehicle(v.id); setTdSelectedDate(null); setTdSelectedTime(null); setTdSlots([]); }}
+                                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${effectiveVehicle === v.id ? "bg-gray-900 text-white" : "border hover:bg-muted"}`}
+                                >
+                                  {v.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Step 2: Calendar */}
+                        {effectiveVehicle && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <button onClick={() => setTdCalendarMonth(new Date(year, month - 1, 1))} className="p-1 rounded hover:bg-muted">&larr;</button>
+                              <span className="text-sm font-medium capitalize">
+                                {tdCalendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}
+                              </span>
+                              <button onClick={() => setTdCalendarMonth(new Date(year, month + 1, 1))} className="p-1 rounded hover:bg-muted">&rarr;</button>
+                            </div>
+                            <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                              {["Lu", "Ma", "Mi", "Jo", "Vi", "Sâ", "Du"].map((d) => (
+                                <span key={d} className="text-muted-foreground font-medium py-1">{d}</span>
+                              ))}
+                              {Array.from({ length: startOffset }).map((_, i) => <span key={`e-${i}`} />)}
+                              {Array.from({ length: daysInMonth }).map((_, i) => {
+                                const day = i + 1;
+                                const d = new Date(year, month, day);
+                                d.setHours(0, 0, 0, 0);
+                                const isPast = d < today;
+                                const isTooFar = d > maxDate;
+                                const isSelected = tdSelectedDate?.getDate() === day && tdSelectedDate?.getMonth() === month && tdSelectedDate?.getFullYear() === year;
+                                const isDisabled = isPast || isTooFar;
+                                return (
+                                  <button
+                                    key={day}
+                                    disabled={isDisabled}
+                                    onClick={() => { setTdSelectedDate(d); fetchSlots(effectiveVehicle!, d); }}
+                                    className={`py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-gray-900 text-white" : isDisabled ? "text-gray-300" : "hover:bg-muted"}`}
+                                  >
+                                    {day}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Step 3: Time slots */}
+                        {tdSelectedDate && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">
+                              Ore disponibile — {tdSelectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}
+                            </p>
+                            {tdLoadingSlots ? (
+                              <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                            ) : tdSlots.length === 0 ? (
+                              <p className="text-xs text-red-500 italic">Niciun slot disponibil în această zi.</p>
+                            ) : (
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {tdSlots.map((slot) => (
+                                  <button
+                                    key={slot}
+                                    onClick={() => setTdSelectedTime(slot)}
+                                    className={`py-1.5 rounded-md text-sm transition-colors ${tdSelectedTime === slot ? "bg-gray-900 text-white" : "border hover:bg-muted"}`}
+                                  >
+                                    {slot}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Actions */}
+                        <div className="flex gap-2 pt-1">
+                          {tdSelectedTime && (
+                            <button
+                              onClick={handleSave}
+                              disabled={tdSaving}
+                              className="rounded-md bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 text-xs font-medium disabled:opacity-50"
+                            >
+                              {tdSaving ? "..." : "Confirmă programarea"}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => { setTdScheduling(false); setTdSelectedVehicle(null); setTdSelectedDate(null); setTdSelectedTime(null); setTdSlots([]); }}
+                            className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                          >
+                            Anulează
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
 
             {/* Lead info */}
             <div className="space-y-2">
@@ -1088,6 +1664,7 @@ function LeadDetailOverlay({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div><span className="text-muted-foreground">Status:</span> <Badge className={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge></div>
                   <div><span className="text-muted-foreground">Brand:</span> <Badge className={BRAND_BADGE_COLORS[lead.brand] || ""}>{BRAND_SHORT_LABELS[lead.brand] || lead.brand}</Badge></div>
+                  <div><span className="text-muted-foreground">Tip:</span> {LEAD_TYPE_CONFIG[lead.type] ? <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs text-gray-700 ${LEAD_TYPE_CONFIG[lead.type].border}`}>{LEAD_TYPE_CONFIG[lead.type].icon} {LEAD_TYPE_CONFIG[lead.type].label}</span> : <span className="text-xs">{lead.type}</span>}</div>
                   <div><span className="text-muted-foreground">Sursa:</span> <span className="text-xs">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
                   <div><span className="text-muted-foreground">Creat:</span> <span className="text-xs">{formatDate(lead.createdAt)}</span></div>
                 </div>
@@ -1671,15 +2248,29 @@ export default function SalesClient({
   activeTestDrives?: ActiveTestDrive[];
 }) {
   const [leads, setLeads] = useState(initialLeads);
+  useEffect(() => { setLeads(initialLeads); }, [initialLeads]);
+  const { selectedBrand } = useBrand();
+  const router = useRouter();
+  const refreshData = useCallback(async () => {
+    try {
+      const brandParam = selectedBrand && selectedBrand !== "ALL" ? `?brand=${selectedBrand}` : "";
+      const res = await fetch(`/api/leads/list${brandParam}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) setLeads(json.data);
+      }
+    } catch { /* fallback to router refresh */ }
+    router.refresh();
+  }, [selectedBrand, router]);
   const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
   const [showNewLeadForm, setShowNewLeadForm] = useState(false);
   const [activeTab, setActiveTab] = useState<"leads" | "pipeline">("leads");
-  const { selectedBrand } = useBrand();
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSource, setFilterSource] = useState("");
+  const [filterType, setFilterType] = useState("");
   const [filterAgent, setFilterAgent] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "priority">("date");
   const [showFilters, setShowFilters] = useState(false);
@@ -1702,14 +2293,15 @@ export default function SalesClient({
       );
     }
     if (filterSource) filtered = filtered.filter((l) => l.source === filterSource);
+    if (filterType) filtered = filtered.filter((l) => l.type === filterType);
     if (filterAgent === "__none") filtered = filtered.filter((l) => !l.assignedTo);
     else if (filterAgent) filtered = filtered.filter((l) => l.assignedTo?.id === filterAgent);
 
-    if (sortBy === "priority") filtered.sort((a, b) => b.priority - a.priority || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    else filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    if (sortBy === "priority") filtered.sort((a, b) => b.priority - a.priority || new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    else filtered.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
     return filtered;
-  }, [leads, searchQuery, filterSource, filterAgent, sortBy]);
+  }, [leads, searchQuery, filterSource, filterType, filterAgent, sortBy]);
 
   // Build visible stages with filters applied to deals
   const visibleStages = useMemo(() => {
@@ -1731,7 +2323,7 @@ export default function SalesClient({
     }
 
     // Apply filters to deals inside stages
-    if (searchQuery || filterSource || filterAgent) {
+    if (searchQuery || filterSource || filterType || filterAgent) {
       const q = searchQuery.toLowerCase();
       stages = stages.map((stage) => ({
         ...stage,
@@ -1742,6 +2334,7 @@ export default function SalesClient({
             if (!name.includes(q) && !vehicle.includes(q)) return false;
           }
           if (filterSource && d.lead.source !== filterSource) return false;
+          if (filterType && d.lead.type !== filterType) return false;
           if (filterAgent === "__none" && d.assignedTo) return false;
           if (filterAgent && filterAgent !== "__none" && d.assignedTo?.id !== filterAgent) return false;
           return true;
@@ -1750,7 +2343,7 @@ export default function SalesClient({
     }
 
     return stages;
-  }, [initialStages, selectedBrand, searchQuery, filterSource, filterAgent]);
+  }, [initialStages, selectedBrand, searchQuery, filterSource, filterType, filterAgent]);
 
   const totalValue = visibleStages.reduce(
     (sum, stage) => sum + stage.deals.reduce((s, d) => s + (d.value ?? 0), 0), 0
@@ -1892,10 +2485,10 @@ export default function SalesClient({
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors ${showFilters || filterSource || filterAgent ? "bg-primary/10 border-primary" : ""}`}
+              className={`flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors ${showFilters || filterSource || filterType || filterAgent ? "bg-primary/10 border-primary" : ""}`}
             >
               <Filter className="h-4 w-4" /> Filtre
-              {(filterSource || filterAgent) && <span className="h-2 w-2 rounded-full bg-primary" />}
+              {(filterSource || filterType || filterAgent) && <span className="h-2 w-2 rounded-full bg-primary" />}
             </button>
             <button
               onClick={() => setSortBy(sortBy === "date" ? "priority" : "date")}
@@ -1911,13 +2504,17 @@ export default function SalesClient({
                 <option value="">Toate sursele</option>
                 {availableSources.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s] || s}</option>)}
               </select>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm bg-white">
+                <option value="">Toate tipurile</option>
+                {Object.entries(LEAD_TYPE_CONFIG).map(([key, cfg]) => <option key={key} value={key}>{cfg.icon} {cfg.label}</option>)}
+              </select>
               <select value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm bg-white">
                 <option value="">Toți agenții</option>
                 <option value="__none">Neasignat</option>
                 {agents.map((a) => <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>)}
               </select>
-              {(filterSource || filterAgent) && (
-                <button onClick={() => { setFilterSource(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
+              {(filterSource || filterType || filterAgent) && (
+                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
               )}
             </div>
           )}
@@ -1933,6 +2530,7 @@ export default function SalesClient({
                   testDrive={activeTestDrives.find((td) => td.customerId === lead.customer.id && (!lead.vehicle?.id || td.vehicleId === lead.vehicle.id))}
                   onMoved={handleMoved}
                   onSelect={setSelectedLeadId}
+                  showBrand={!selectedBrand}
                 />
               ))}
             </div>
@@ -1962,10 +2560,10 @@ export default function SalesClient({
             </div>
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors ${showFilters || filterSource || filterAgent ? "bg-primary/10 border-primary" : ""}`}
+              className={`flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-muted transition-colors ${showFilters || filterSource || filterType || filterAgent ? "bg-primary/10 border-primary" : ""}`}
             >
               <Filter className="h-4 w-4" /> Filtre
-              {(filterSource || filterAgent) && <span className="h-2 w-2 rounded-full bg-primary" />}
+              {(filterSource || filterType || filterAgent) && <span className="h-2 w-2 rounded-full bg-primary" />}
             </button>
           </div>
 
@@ -1975,13 +2573,17 @@ export default function SalesClient({
                 <option value="">Toate sursele</option>
                 {availableSources.map((s) => <option key={s} value={s}>{SOURCE_LABELS[s] || s}</option>)}
               </select>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm bg-white">
+                <option value="">Toate tipurile</option>
+                {Object.entries(LEAD_TYPE_CONFIG).map(([key, cfg]) => <option key={key} value={key}>{cfg.icon} {cfg.label}</option>)}
+              </select>
               <select value={filterAgent} onChange={(e) => setFilterAgent(e.target.value)} className="rounded-md border px-3 py-1.5 text-sm bg-white">
                 <option value="">Toți agenții</option>
                 <option value="__none">Neasignat</option>
                 {agents.map((a) => <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>)}
               </select>
-              {(filterSource || filterAgent) && (
-                <button onClick={() => { setFilterSource(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
+              {(filterSource || filterType || filterAgent) && (
+                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
               )}
             </div>
           )}
@@ -2017,7 +2619,7 @@ export default function SalesClient({
                       stage.deals.map((deal) => {
                         const dealBrand = (deal as Record<string, unknown>)._brand as string | null;
                         const showBrandBadge = !selectedBrand || selectedBrand === "ALL";
-                        const stale = deal.createdAt ? daysSince(deal.createdAt) >= STALE_DAYS : false;
+                        const stale = deal.createdAt ? hoursSince(deal.createdAt) >= STALE_HOURS : false;
                         return (
                           <div
                             key={deal.id}
@@ -2056,7 +2658,7 @@ export default function SalesClient({
           agents={agents}
           onClose={() => setSelectedLeadId(null)}
           onCustomerClick={setSelectedCustomerId}
-          onLeadUpdated={() => window.location.reload()}
+          onLeadUpdated={refreshData}
         />
       )}
 
