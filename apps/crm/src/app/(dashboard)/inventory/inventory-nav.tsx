@@ -7,6 +7,7 @@ import { cn } from "@autoerebus/ui/lib/utils";
 const tabs = [
   { href: "/inventory", label: "Vehicule" },
   { href: "/inventory/properties", label: "Proprietati" },
+  { href: "/inventory/autovit", label: "Autovit" },
 ];
 
 export function InventoryNav() {

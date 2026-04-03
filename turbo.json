@@ -11,7 +11,18 @@
         "NEXTAUTH_URL",
         "CLOUDINARY_CLOUD_NAME",
         "CLOUDINARY_API_KEY",
-        "CLOUDINARY_API_SECRET"
+        "CLOUDINARY_API_SECRET",
+        "AUTOVIT_CLIENT_ID",
+        "AUTOVIT_CLIENT_SECRET",
+        "AUTOVIT_USERNAME",
+        "AUTOVIT_PASSWORD",
+        "AUTOVIT_REGION_ID",
+        "AUTOVIT_CITY_ID",
+        "AUTOVIT_CONTACT_PERSON",
+        "AUTOVIT_CONTACT_PHONES",
+        "NISSAN_API_KEY",
+        "RENAULT_API_KEY",
+        "AUTORULATE_API_KEY"
       ]
     },
     "dev": {
