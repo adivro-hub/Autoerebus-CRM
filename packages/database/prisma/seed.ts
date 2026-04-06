@@ -434,6 +434,30 @@ async function main() {
     });
   }
 
+  // ─── Equipment: Electric Vehicle items ──────────────
+  // Required for Autovit publishing of electric/PHEV vehicles.
+  // Other equipment categories are populated via POST /api/equipment.
+  const evCategory = await prisma.equipmentCategory.upsert({
+    where: { autovitKey: "ev_specs" },
+    update: { name: "Specificații vehicul electric" },
+    create: { name: "Specificații vehicul electric", autovitKey: "ev_specs", order: 100 },
+  });
+
+  const evItems = [
+    { name: "Functie incarcare rapida", autovitKey: "quick_charging_function" },
+    { name: "Cablu incarcare masina electrica", autovitKey: "vehicle_charging_cable" },
+    { name: "Sistem recuperare energie", autovitKey: "energy_recovery_system" },
+  ];
+
+  for (let i = 0; i < evItems.length; i++) {
+    const item = evItems[i];
+    await prisma.equipmentItem.upsert({
+      where: { autovitKey: item.autovitKey },
+      update: { name: item.name, categoryId: evCategory.id, order: i },
+      create: { name: item.name, autovitKey: item.autovitKey, categoryId: evCategory.id, order: i },
+    });
+  }
+
   console.log("Seed completed successfully!");
 }
 

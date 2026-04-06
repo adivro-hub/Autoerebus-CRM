@@ -331,8 +331,10 @@ export interface CrmVehicleForAutovit {
   vin: string | null;
   year: number;
   mileage: number | null;
-  engineCapacity: number | null;
-  enginePower: number | null;
+  engineSize: number | null;
+  horsepower: number | null;
+  batteryCapacity: number | null;
+  wltpRange: number | null;
   price: number | null;
   discountPrice: number | null;
   condition: string;
@@ -340,12 +342,13 @@ export interface CrmVehicleForAutovit {
   transmission: string | null;
   bodyType: string | null;
   drivetrain: string | null;
-  exteriorColor: string | null;
+  color: string | null;
   doors: number | null;
   description: string | null;
   make: { name: string; slug: string };
   model: { name: string; slug: string };
   images: { url: string; order: number }[];
+  equipment: { item: { autovitKey: string } }[];
   autovitId: string | null;
 }
 
@@ -364,12 +367,16 @@ export function mapCrmToAutovit(
   const makeSlug = vehicle.make.slug.toLowerCase();
   const modelSlug = vehicle.model.slug.toLowerCase();
   const price = vehicle.discountPrice || vehicle.price || 0;
+  const isElectric = vehicle.fuelType?.toUpperCase() === "ELECTRIC";
+  const isPHEV = vehicle.fuelType?.toUpperCase() === "PHEV";
 
   const description = vehicle.description ||
     `${vehicle.make.name} ${vehicle.model.name} ${vehicle.year}` +
     (vehicle.mileage ? `, ${vehicle.mileage} km` : "") +
-    (vehicle.engineCapacity ? `, ${vehicle.engineCapacity} cm³` : "") +
-    (vehicle.enginePower ? `, ${vehicle.enginePower} CP` : "");
+    (!isElectric && vehicle.engineSize ? `, ${vehicle.engineSize} cm³` : "") +
+    (vehicle.horsepower ? `, ${vehicle.horsepower} CP` : "") +
+    ((isElectric || isPHEV) && vehicle.batteryCapacity ? `, baterie ${vehicle.batteryCapacity} kWh` : "") +
+    ((isElectric || isPHEV) && vehicle.wltpRange ? `, autonomie ${vehicle.wltpRange} km (WLTP)` : "");
 
   const payload: AutovitCreateAdvertPayload = {
     title: vehicle.title || `${vehicle.make.name} ${vehicle.model.name} ${vehicle.year}`,
@@ -410,9 +417,18 @@ export function mapCrmToAutovit(
   // Map optional params
   if (vehicle.vin) payload.params.vin = vehicle.vin;
   if (vehicle.mileage) payload.params.mileage = vehicle.mileage;
-  if (vehicle.engineCapacity) payload.params.engine_capacity = String(vehicle.engineCapacity);
-  if (vehicle.enginePower) payload.params.engine_power = String(vehicle.enginePower);
+  // Combustion-only: skip engine_capacity for pure electric vehicles
+  if (!isElectric && vehicle.engineSize) payload.params.engine_capacity = String(vehicle.engineSize);
+  if (vehicle.horsepower) payload.params.engine_power = String(vehicle.horsepower);
   if (vehicle.doors) payload.params.door_count = vehicle.doors;
+
+  // Electric / PHEV specific params
+  if ((isElectric || isPHEV) && vehicle.batteryCapacity) {
+    payload.params.battery_capacity = vehicle.batteryCapacity;
+  }
+  if ((isElectric || isPHEV) && vehicle.wltpRange) {
+    payload.params.autonomy = vehicle.wltpRange;
+  }
 
   if (vehicle.fuelType) {
     payload.params.fuel_type = FUEL_MAP[vehicle.fuelType.toUpperCase()] || vehicle.fuelType.toLowerCase();
@@ -423,11 +439,20 @@ export function mapCrmToAutovit(
   if (vehicle.bodyType) {
     payload.params.body_type = BODY_TYPE_MAP[vehicle.bodyType.toUpperCase()] || vehicle.bodyType.toLowerCase();
   }
-  if (vehicle.exteriorColor) {
+  if (vehicle.color) {
     const colorKey = Object.keys(COLOR_MAP).find((k) =>
-      vehicle.exteriorColor!.toLowerCase().includes(k.toLowerCase())
+      vehicle.color!.toLowerCase().includes(k.toLowerCase())
     );
     if (colorKey) payload.params.color = COLOR_MAP[colorKey];
+  }
+
+  // Equipment items map directly to Autovit boolean params via autovitKey
+  // (e.g. quick_charging_function, vehicle_charging_cable, energy_recovery_system,
+  //  bluetooth_interface, navigation_system, etc.)
+  for (const eq of vehicle.equipment) {
+    if (eq.item.autovitKey) {
+      payload.params[eq.item.autovitKey] = 1;
+    }
   }
 
   return payload;
