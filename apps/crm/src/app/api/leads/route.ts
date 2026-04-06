@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
+import { handleTestDriveConflictWithDemoBookings } from "@/lib/demo-booking-trigger";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -113,11 +114,12 @@ export async function POST(request: NextRequest) {
 
     // Schedule test drive if requested
     if (scheduleTestDrive && testDriveDate && vehicleId) {
+      const tdScheduledAt = new Date(testDriveDate);
       const td = await prisma.testDrive.create({
         data: {
           vehicleId,
           customerId: customer.id,
-          scheduledAt: new Date(testDriveDate),
+          scheduledAt: tdScheduledAt,
           duration: 30,
           contactName: `${firstName || customer.firstName} ${lastName || customer.lastName}`,
           contactPhone: phone || customer.phone,
@@ -127,6 +129,10 @@ export async function POST(request: NextRequest) {
           status: "SCHEDULED",
         },
       });
+
+      handleTestDriveConflictWithDemoBookings(td.id, vehicleId, tdScheduledAt, 30).catch((e) =>
+        console.error("[TD conflict check] error:", e)
+      );
 
       await prisma.activity.create({
         data: {

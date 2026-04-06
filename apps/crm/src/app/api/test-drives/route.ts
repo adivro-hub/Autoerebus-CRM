@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
+import { handleTestDriveConflictWithDemoBookings } from "@/lib/demo-booking-trigger";
 
 // GET - fetch test drive vehicles and customers for the form
 export async function GET(request: NextRequest) {
@@ -167,6 +168,14 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    // Mark any conflicting demo bookings and notify
+    handleTestDriveConflictWithDemoBookings(
+      testDrive.id,
+      vehicleId,
+      scheduledDate,
+      durationMin
+    ).catch((e) => console.error("[TD conflict check] error:", e));
 
     return NextResponse.json(testDrive, { status: 201 });
   } catch (error: unknown) {

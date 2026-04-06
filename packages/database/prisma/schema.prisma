@@ -134,7 +134,34 @@ enum NotificationType {
   TEST_DRIVE_SCHEDULED
   TEST_DRIVE_REMINDER
   APPOINTMENT_REMINDER
+  DEMO_BOOKING_PENDING
+  DEMO_BOOKING_APPROVED
+  DEMO_BOOKING_REJECTED
+  DEMO_BOOKING_CANCELLED
+  DEMO_BOOKING_CONFLICTED
+  DEMO_BOOKING_REMINDER_24H
+  DEMO_BOOKING_REMINDER_8H
+  DEMO_BOOKING_REMINDER_3H
   SYSTEM
+}
+
+enum TeamMemberRole {
+  MEMBER
+  SUPERVISOR
+}
+
+enum DemoBookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+  CONFLICTED
+}
+
+enum DemoBookingRecipientType {
+  USER
+  CUSTOMER
 }
 
 enum CustomerType {
@@ -173,6 +200,11 @@ model User {
   customerNotes       CustomerNote[]
   auditLogs           AuditLog[]
   sessions            Session[]
+  teams               TeamMember[]
+  demoBookingsForUser DemoBooking[]   @relation("DemoBookingForUser")
+  demoBookingsCreated DemoBooking[]   @relation("DemoBookingCreatedBy")
+  demoBookingsApproved DemoBooking[]  @relation("DemoBookingApprovedBy")
+  demoBookingsCancelled DemoBooking[] @relation("DemoBookingCancelledBy")
 
   @@index([role])
   @@index([active])
@@ -218,6 +250,7 @@ model Customer {
   claims        Claim[]
   testDrives    TestDrive[]
   customerNotes CustomerNote[]
+  demoBookings  DemoBooking[]
 
   @@index([email])
   @@index([phone])
@@ -342,6 +375,7 @@ model Vehicle {
   claims        Claim[]
   testDrives    TestDrive[]
   demoCar       DemoCar?
+  demoBookings  DemoBooking[]
 
   @@index([brand])
   @@index([status])
@@ -619,22 +653,127 @@ model DemoCar {
   @@index([active])
 }
 
+// ─── TEAMS ──────────────────────────────────────────────
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  brand     Brand    @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      TeamMember[]
+  demoBookings DemoBooking[]
+
+  @@index([brand])
+}
+
+model TeamMember {
+  userId   String
+  teamId   String
+  role     TeamMemberRole @default(MEMBER)
+  joinedAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@index([teamId, role])
+}
+
+// ─── DEMO BOOKINGS ──────────────────────────────────────
+
+model DemoBooking {
+  id        String @id @default(cuid())
+  vehicleId String
+  teamId    String
+  brand     Brand
+
+  // Recipient - either a user (CRM employee) or a customer
+  recipientType DemoBookingRecipientType
+  userId        String?
+  customerId    String?
+
+  // Who created the booking (can be same as userId for self-bookings)
+  createdById String
+
+  startDate DateTime
+  endDate   DateTime
+  purpose   String
+  notes     String?
+
+  status          DemoBookingStatus @default(PENDING)
+  approvedById    String?
+  approvedAt      DateTime?
+  rejectedReason  String?
+  cancelledById   String?
+  cancelledAt     DateTime?
+  cancelledReason String?
+
+  // Reminder tracking for conflict situations
+  reminder24hSentAt DateTime?
+  reminder8hSentAt  DateTime?
+  reminder3hSentAt  DateTime?
+
+  // Link to conflicting test drive if any
+  conflictingTestDriveId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id])
+  team        Team      @relation(fields: [teamId], references: [id])
+  user        User?     @relation("DemoBookingForUser", fields: [userId], references: [id])
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  createdBy   User      @relation("DemoBookingCreatedBy", fields: [createdById], references: [id])
+  approvedBy  User?     @relation("DemoBookingApprovedBy", fields: [approvedById], references: [id])
+  cancelledBy User?     @relation("DemoBookingCancelledBy", fields: [cancelledById], references: [id])
+
+  @@index([vehicleId])
+  @@index([teamId])
+  @@index([brand])
+  @@index([status])
+  @@index([userId])
+  @@index([customerId])
+  @@index([createdById])
+  @@index([startDate, endDate])
+}
+
 // ─── NOTIFICATIONS & LOGS ───────────────────────────────
 
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  message   String
-  read      Boolean          @default(false)
-  link      String?
-  createdAt DateTime         @default(now())
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  read        Boolean          @default(false)
+  link        String?
+  channels    String[]         @default([])
+  emailSentAt DateTime?
+  smsSentAt   DateTime?
+  metadata    Json?
+  createdAt   DateTime         @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
   @@index([createdAt])
+  @@index([type])
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  channel   String   // EMAIL, SMS, IN_APP
+  subject   String?
+  body      String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@index([channel])
 }
 
 model SmsLog {

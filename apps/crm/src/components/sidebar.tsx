@@ -20,6 +20,7 @@ import {
   SlidersHorizontal,
   List,
   ArrowUpDown,
+  CarFront,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@autoerebus/ui/lib/utils";
@@ -48,6 +49,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/service", label: "Service", icon: Wrench },
   { href: "/claims", label: "Daune", icon: Shield },
   { href: "/test-drives", label: "Test Drive", icon: Calendar },
+  { href: "/demo-bookings", label: "Masini Demo", icon: CarFront },
   { href: "/customers", label: "Clienti", icon: Users },
   { href: "/users", label: "Utilizatori", icon: UserCog },
   { href: "/settings", label: "Setari", icon: Settings },

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@autoerebus/database";
+import { handleTestDriveConflictWithDemoBookings } from "@/lib/demo-booking-trigger";
 
 export const maxDuration = 30;
 
@@ -193,6 +194,14 @@ export async function POST(request: NextRequest) {
         status: "SCHEDULED",
       },
     });
+
+    // Mark any conflicting demo bookings and notify
+    handleTestDriveConflictWithDemoBookings(
+      testDrive.id,
+      vehicle.id,
+      scheduledAt,
+      30
+    ).catch((e) => console.error("[TD conflict check] error:", e));
 
     // Create lead + deal in "Test Drive Programat" pipeline stage
     const existingLead = await prisma.lead.findFirst({
