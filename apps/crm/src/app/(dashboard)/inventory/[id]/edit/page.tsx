@@ -101,6 +101,11 @@ export default function EditVehiclePage() {
   const [conditions, setConditions] = useState<PropertyOption[]>([]);
   const [fuelType, setFuelType] = useState("BENZINA");
   const [specialBadge, setSpecialBadge] = useState(false);
+  const [badgeModalOpen, setBadgeModalOpen] = useState(false);
+  const [badgeText, setBadgeText] = useState("");
+  const [equipmentCategories, setEquipmentCategories] = useState<{ id: string; name: string; autovitKey: string; items: { id: string; name: string; autovitKey: string }[] }[]>([]);
+  const [selectedEquipment, setSelectedEquipment] = useState<Set<string>>(new Set());
+  const [savingEquipment, setSavingEquipment] = useState(false);
 
   // Load vehicle + reference data
   useEffect(() => {
@@ -110,7 +115,9 @@ export default function EditVehiclePage() {
       fetch("/api/users").then((r) => r.json()),
       fetch("/api/properties?category=bodyType").then((r) => r.json()),
       fetch("/api/properties?category=condition").then((r) => r.json()),
-    ]).then(([vehicleData, makesData, usersData, bodyData, conditionData]) => {
+      fetch("/api/equipment").then((r) => r.json()),
+      fetch(`/api/vehicles/${id}/equipment`).then((r) => r.json()),
+    ]).then(([vehicleData, makesData, usersData, bodyData, conditionData, equipData, vehicleEquipData]) => {
       if (vehicleData.success && vehicleData.data) {
         const v = vehicleData.data;
         setVehicle(v);
@@ -118,6 +125,7 @@ export default function EditVehiclePage() {
         setSelectedModelId(v.modelId);
         setFuelType(v.fuelType);
         setSpecialBadge(v.specialBadge);
+        setBadgeText(v.specialBadgeText || "");
         setImages(
           (v.images || []).map((img: any) => ({
             url: img.url,
@@ -130,6 +138,8 @@ export default function EditVehiclePage() {
       if (usersData.success) setUsers(usersData.data);
       if (bodyData.success) setBodyTypes(bodyData.data);
       if (conditionData.success) setConditions(conditionData.data);
+      if (equipData.success) setEquipmentCategories(equipData.data);
+      if (vehicleEquipData.success) setSelectedEquipment(new Set(vehicleEquipData.data));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [id]);
@@ -233,16 +243,13 @@ export default function EditVehiclePage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6" key={vehicle.id} id="edit-vehicle-form">
-        {/* Basic Info */}
+        {/* Operational */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Informatii de Baza</CardTitle>
+            <CardTitle className="text-base">Operațional</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="sm:col-span-2 lg:col-span-3">
-                <Input label="Titlu" name="title" defaultValue={vehicle.title ?? ""} placeholder="Ex: Nissan Qashqai e-POWER Tekna+ 2025" />
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Brand *</label>
                 <select
@@ -258,39 +265,6 @@ export default function EditVehiclePage() {
                     ))}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Marca *</label>
-                <select
-                  name="makeId"
-                  required
-                  value={selectedMakeId}
-                  onChange={(e) => setSelectedMakeId(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Selecteaza marca</option>
-                  {makes.map((make) => (
-                    <option key={make.id} value={make.id}>{make.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium">Model *</label>
-                <select
-                  name="modelId"
-                  required
-                  value={selectedModelId}
-                  onChange={(e) => setSelectedModelId(e.target.value)}
-                  disabled={!selectedMakeId}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">Selecteaza model</option>
-                  {models.map((model) => (
-                    <option key={model.id} value={model.id}>{model.name}</option>
-                  ))}
-                </select>
-              </div>
-              <Input label="An *" name="year" type="number" min={1990} max={2030} defaultValue={vehicle.year} required />
-              <Input label="VIN" name="vin" defaultValue={vehicle.vin ?? ""} placeholder="Ex: WVWZZZ3CZWE123456" />
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Stare *</label>
                 <select
@@ -336,28 +310,101 @@ export default function EditVehiclePage() {
                   ))}
                 </select>
               </div>
-            </div>
-            <div className="mt-4">
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  name="availableTestDrive"
-                  defaultChecked={vehicle.availableTestDrive}
-                  className="h-4 w-4 rounded border-input"
-                />
-                Disponibil pentru Test Drive
-              </label>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">&nbsp;</label>
+                <div className="flex items-center h-10">
+                  <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      name="availableTestDrive"
+                      defaultChecked={vehicle.availableTestDrive}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    Test Drive
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">&nbsp;</label>
+                <div className="flex items-center h-10 gap-2">
+                  <label className="flex items-center gap-2 text-sm whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={specialBadge}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setBadgeModalOpen(true);
+                        } else {
+                          setSpecialBadge(false);
+                          setBadgeText("");
+                        }
+                      }}
+                      className="h-4 w-4 rounded border-input"
+                    />
+                    Badge Special
+                  </label>
+                  {specialBadge && badgeText && (
+                    <button
+                      type="button"
+                      onClick={() => setBadgeModalOpen(true)}
+                      className="text-xs text-muted-foreground hover:text-gray-900 underline"
+                    >
+                      ({badgeText})
+                    </button>
+                  )}
+                </div>
+                {/* Hidden inputs for form submission */}
+                <input type="hidden" name="specialBadge" value={specialBadge ? "on" : ""} />
+                <input type="hidden" name="specialBadgeText" value={badgeText} />
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Images */}
+        {/* Basic Info */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Imagini</CardTitle>
+            <CardTitle className="text-base">Informații Vehicul</CardTitle>
           </CardHeader>
           <CardContent>
-            <ImageUploader images={images} onChange={setImages} />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="sm:col-span-2 lg:col-span-4">
+                <Input label="Titlu" name="title" defaultValue={vehicle.title ?? ""} placeholder="Ex: Nissan Qashqai e-POWER Tekna+ 2025" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Marca *</label>
+                <select
+                  name="makeId"
+                  required
+                  value={selectedMakeId}
+                  onChange={(e) => setSelectedMakeId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza marca</option>
+                  {makes.map((make) => (
+                    <option key={make.id} value={make.id}>{make.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Model *</label>
+                <select
+                  name="modelId"
+                  required
+                  value={selectedModelId}
+                  onChange={(e) => setSelectedModelId(e.target.value)}
+                  disabled={!selectedMakeId}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza model</option>
+                  {models.map((model) => (
+                    <option key={model.id} value={model.id}>{model.name}</option>
+                  ))}
+                </select>
+              </div>
+              <Input label="An *" name="year" type="number" min={1990} max={2030} defaultValue={vehicle.year} required />
+              <Input label="VIN" name="vin" defaultValue={vehicle.vin ?? ""} placeholder="Ex: WVWZZZ3CZWE123456" />
+            </div>
           </CardContent>
         </Card>
 
@@ -367,7 +414,7 @@ export default function EditVehiclePage() {
             <CardTitle className="text-base">Specificatii Tehnice</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium">Tip Caroserie</label>
                 <select
@@ -439,7 +486,7 @@ export default function EditVehiclePage() {
             <CardTitle className="text-base">Pret</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Input label="Pret *" name="price" type="number" step="0.01" min={0} defaultValue={vehicle.price} required />
               <Input label="Pret Promotional" name="discountPrice" type="number" step="0.01" min={0} defaultValue={vehicle.discountPrice ?? ""} />
               <div className="space-y-1.5">
@@ -477,32 +524,13 @@ export default function EditVehiclePage() {
           </CardContent>
         </Card>
 
-        {/* Special Badge */}
+        {/* Images */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Badge Special</CardTitle>
+            <CardTitle className="text-base">Imagini</CardTitle>
           </CardHeader>
           <CardContent>
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                name="specialBadge"
-                checked={specialBadge}
-                onChange={(e) => setSpecialBadge(e.target.checked)}
-                className="h-4 w-4 rounded border-input"
-              />
-              Afiseaza badge special pe acest vehicul
-            </label>
-            {specialBadge && (
-              <div className="mt-3">
-                <Input
-                  label="Text Badge"
-                  name="specialBadgeText"
-                  defaultValue={vehicle.specialBadgeText ?? ""}
-                  placeholder="Ex: Oferta Limitata, Pret Redus, Nou in Stoc"
-                />
-              </div>
-            )}
+            <ImageUploader images={images} onChange={setImages} />
           </CardContent>
         </Card>
 
@@ -526,6 +554,98 @@ export default function EditVehiclePage() {
         <div className="h-20" />
       </form>
 
+      {/* Equipment / Dotări — outside form since it saves independently */}
+      {equipmentCategories.length > 0 && (
+        <Card className="-mt-20 mb-24">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Dotări / Echipamente</CardTitle>
+              <Button
+                type="button"
+                size="sm"
+                disabled={savingEquipment}
+                onClick={async () => {
+                  setSavingEquipment(true);
+                  try {
+                    await fetch(`/api/vehicles/${id}/equipment`, {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ itemIds: Array.from(selectedEquipment) }),
+                    });
+                    setSuccess(true);
+                    setTimeout(() => setSuccess(false), 3000);
+                  } catch { /* ignore */ }
+                  finally { setSavingEquipment(false); }
+                }}
+              >
+                {savingEquipment ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Salvează dotările
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {equipmentCategories.map((cat) => (
+                <div key={cat.id}>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-900">{cat.name}</h4>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-gray-900"
+                      onClick={() => {
+                        const allIds = cat.items.map((i) => i.id);
+                        const allSelected = allIds.every((iid) => selectedEquipment.has(iid));
+                        setSelectedEquipment((prev) => {
+                          const next = new Set(prev);
+                          if (allSelected) {
+                            allIds.forEach((iid) => next.delete(iid));
+                          } else {
+                            allIds.forEach((iid) => next.add(iid));
+                          }
+                          return next;
+                        });
+                      }}
+                    >
+                      {cat.items.every((i) => selectedEquipment.has(i.id)) ? "Deselectează tot" : "Selectează tot"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {cat.items.map((item) => (
+                      <label
+                        key={item.id}
+                        className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition-colors ${
+                          selectedEquipment.has(item.id)
+                            ? "border-gray-900 bg-gray-50 font-medium"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedEquipment.has(item.id)}
+                          onChange={() => {
+                            setSelectedEquipment((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) {
+                                next.delete(item.id);
+                              } else {
+                                next.add(item.id);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="h-4 w-4 rounded border-gray-300"
+                        />
+                        {item.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         <div className="flex items-center justify-end gap-3 px-6 py-3">
@@ -546,6 +666,50 @@ export default function EditVehiclePage() {
           </Button>
         </div>
       </div>
+
+      {/* Badge Special Modal */}
+      {badgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { if (!specialBadge) setBadgeModalOpen(false); }}>
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-base font-semibold">Badge Special</h3>
+            <p className="text-sm text-muted-foreground">Introdu textul care va apărea ca badge pe acest vehicul.</p>
+            <input
+              type="text"
+              value={badgeText}
+              onChange={(e) => setBadgeText(e.target.value)}
+              placeholder="Ex: Oferta Limitata, Pret Redus"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              autoFocus
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSpecialBadge(false);
+                  setBadgeText("");
+                  setBadgeModalOpen(false);
+                }}
+                className="rounded-md border px-4 py-2 text-sm hover:bg-muted"
+              >
+                Anulează
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (badgeText.trim()) {
+                    setSpecialBadge(true);
+                    setBadgeModalOpen(false);
+                  }
+                }}
+                disabled={!badgeText.trim()}
+                className="rounded-md bg-gray-900 text-white px-4 py-2 text-sm hover:bg-gray-800 disabled:opacity-50"
+              >
+                Activează badge
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Toast */}
       {success && (

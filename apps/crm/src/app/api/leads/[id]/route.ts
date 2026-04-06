@@ -95,7 +95,7 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await request.json();
-  const { status, assignedToId, notes, priority, pipelineStageId, lostReason, vehicleId, additionalVehicleIds } = body;
+  const { status, assignedToId, notes, priority, pipelineStageId, lostReason, vehicleId, additionalVehicleIds, adminNotes, followUpAt, followUpNote } = body;
 
   try {
     const lead = await prisma.lead.findUnique({ where: { id } });
@@ -113,6 +113,9 @@ export async function PATCH(
     if (lostReason !== undefined) updateData.lostReason = lostReason;
     if (vehicleId !== undefined) updateData.vehicleId = vehicleId || null;
     if (additionalVehicleIds !== undefined) updateData.additionalVehicleIds = additionalVehicleIds;
+    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    if (followUpAt !== undefined) updateData.followUpAt = followUpAt ? new Date(followUpAt) : null;
+    if (followUpNote !== undefined) updateData.followUpNote = followUpNote;
 
     const updatedLead = await prisma.lead.update({
       where: { id },

@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent iOS zoom on input focus (requires 16px minimum) */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  select,
+  textarea,
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="search"],
+  input[type="password"],
+  input:not([type]) {
+    font-size: 16px !important;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

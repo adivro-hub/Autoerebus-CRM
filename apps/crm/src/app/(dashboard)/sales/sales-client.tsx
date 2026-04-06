@@ -137,10 +137,10 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 const BRAND_BADGE_COLORS: Record<string, string> = {
-  NISSAN: "border border-gray-900 text-gray-900",
-  RENAULT: "border border-gray-900 text-gray-900",
-  AUTORULATE: "border border-gray-900 text-gray-900",
-  SERVICE: "border border-gray-900 text-gray-900",
+  NISSAN: "border border-gray-900 text-gray-900 bg-transparent",
+  RENAULT: "border border-gray-900 text-gray-900 bg-transparent",
+  AUTORULATE: "border border-gray-900 text-gray-900 bg-transparent",
+  SERVICE: "border border-gray-900 text-gray-900 bg-transparent",
 };
 
 const BRAND_SHORT_LABELS: Record<string, string> = {
@@ -717,7 +717,12 @@ function PipelineDealCard({
             Agent: {deal.assignedTo.firstName} {deal.assignedTo.lastName}
           </p>
         )}
-        <div className="mt-2 pt-2 border-t flex justify-end">
+        <div className="mt-2 pt-2 border-t flex items-center justify-between">
+          {LEAD_TYPE_CONFIG[deal.lead.type] ? (
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_TYPE_CONFIG[deal.lead.type].style}`}>
+              {LEAD_TYPE_CONFIG[deal.lead.type].label}
+            </span>
+          ) : <span />}
           <MoveDropdown
             leadId={deal.lead.id}
             stages={stages}
@@ -828,6 +833,8 @@ function LeadDetailOverlay({
   const [editingCustomer, setEditingCustomer] = useState(false);
   const [custForm, setCustForm] = useState({ firstName: "", lastName: "", phone: "", email: "" });
   const [savingCustomer, setSavingCustomer] = useState(false);
+  const [adminNote, setAdminNote] = useState("");
+  const [savingAdminNote, setSavingAdminNote] = useState(false);
   // TD confirm with agent
   const [tdConfirmingId, setTdConfirmingId] = useState<string | null>(null);
   const [tdConfirmAgent, setTdConfirmAgent] = useState("");
@@ -847,7 +854,14 @@ function LeadDetailOverlay({
     try {
       const res = await fetch(`/api/leads/${leadId}`);
       const data = await res.json();
-      if (data.success) setLead(data.data);
+      if (data.success) {
+        setLead(data.data);
+        setAdminNote(data.data.adminNotes || "");
+        if (data.data.followUpAt) {
+          setFollowUpDate(data.data.followUpAt.split("T")[0]);
+          setFollowUpNote(data.data.followUpNote || "");
+        }
+      }
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [leadId]);
@@ -966,19 +980,39 @@ function LeadDetailOverlay({
     setSavingFollowUp(true);
     try {
       await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          followUpAt: new Date(followUpDate).toISOString(),
+          followUpNote: followUpNote.trim(),
+        }),
+      });
+      // Also log activity
+      await fetch(`/api/leads/${leadId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          content: `📅 Follow-up programat: ${followUpDate} — ${followUpNote.trim()}`,
+          content: `Follow-up programat: ${followUpDate} — ${followUpNote.trim()}`,
           type: "NOTE",
         }),
       });
       await fetchLead();
       setShowFollowUp(false);
-      setFollowUpDate("");
-      setFollowUpNote("");
     } catch { /* ignore */ }
     finally { setSavingFollowUp(false); }
+  }
+
+  async function saveAdminNote() {
+    setSavingAdminNote(true);
+    try {
+      await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adminNotes: adminNote.trim() || null }),
+      });
+      await fetchLead();
+    } catch { /* ignore */ }
+    finally { setSavingAdminNote(false); }
   }
 
   const currentStageName = lead?.deals?.[0]?.stage?.name;
@@ -1661,23 +1695,46 @@ function LeadDetailOverlay({
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lead</h3>
               <div className="rounded-lg border p-3 space-y-2">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div><span className="text-muted-foreground">Status:</span> <Badge className={STATUS_COLORS[lead.status]}>{STATUS_LABELS[lead.status]}</Badge></div>
-                  <div><span className="text-muted-foreground">Brand:</span> <Badge className={BRAND_BADGE_COLORS[lead.brand] || ""}>{BRAND_SHORT_LABELS[lead.brand] || lead.brand}</Badge></div>
-                  <div><span className="text-muted-foreground">Tip:</span> {LEAD_TYPE_CONFIG[lead.type] ? <span className={`inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs text-gray-700 ${LEAD_TYPE_CONFIG[lead.type].border}`}>{LEAD_TYPE_CONFIG[lead.type].icon} {LEAD_TYPE_CONFIG[lead.type].label}</span> : <span className="text-xs">{lead.type}</span>}</div>
-                  <div><span className="text-muted-foreground">Sursa:</span> <span className="text-xs">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
-                  <div><span className="text-muted-foreground">Creat:</span> <span className="text-xs">{formatDate(lead.createdAt)}</span></div>
+                {/* Row 1: Status / Brand / Tip / Sursa / Creat */}
+                <div className="flex items-center gap-4 text-sm">
+                  <div><span className="text-muted-foreground text-xs">Status</span> <span className="block font-medium text-gray-900">{STATUS_LABELS[lead.status]}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Brand</span> <span className="block font-medium text-gray-900">{BRAND_SHORT_LABELS[lead.brand] || lead.brand}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Tip</span> <span className="block font-medium text-gray-900">{LEAD_TYPE_CONFIG[lead.type]?.label || lead.type}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Sursa</span> <span className="block font-medium text-gray-900">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
+                  <div><span className="text-muted-foreground text-xs">Creat</span> <span className="block font-medium text-gray-900">{formatDate(lead.createdAt)}</span></div>
                 </div>
 
-                {/* Agent assignment */}
+                {/* Row 2: Pipeline */}
                 <div className="flex items-center gap-2 pt-2 border-t">
-                  <UserPlus className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Agent:</span>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Pipeline:</span>
+                  {lead.deals.length > 0 ? (
+                    <div className="flex items-center gap-2 flex-1">
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: lead.deals[0].stage.color }} />
+                      <span className="text-sm font-medium text-gray-900">{lead.deals[0].stage.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {lead.deals[0].value ? formatCurrency(lead.deals[0].value, lead.deals[0].currency) : ""} {lead.deals[0].probability ? `· ${lead.deals[0].probability}%` : ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Nu este în pipeline</span>
+                  )}
+                  <MoveDropdown
+                    leadId={leadId}
+                    stages={availableStages}
+                    currentStageName={currentStageName}
+                    brand={lead.brand}
+                    onMoved={async () => { await fetchLead(); onLeadUpdated?.(); }}
+                  />
+                </div>
+
+                {/* Row 3: Agent */}
+                <div className="flex items-center gap-2 pt-2 border-t">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Agent:</span>
                   <select
                     value={lead.assignedTo?.id || ""}
                     onChange={(e) => assignAgent(e.target.value || null)}
                     disabled={assigningAgent}
-                    className="flex-1 rounded-md border px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="flex-1 rounded-md border px-2 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="">Neasignat</option>
                     {agents.map((a) => (
@@ -1687,118 +1744,85 @@ function LeadDetailOverlay({
                   {assigningAgent && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 </div>
 
-                {lead.notes && (
-                  <div className="text-sm mt-1">
-                    <span className="text-muted-foreground">Note:</span>
-                    <p className="mt-0.5 whitespace-pre-wrap text-xs bg-muted/50 rounded p-2">{lead.notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pipeline + Move */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pipeline</h3>
-              <div className="rounded-lg border p-3 space-y-3">
-                {lead.deals.length > 0 ? lead.deals.map((deal) => (
-                  <div key={deal.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: deal.stage.color }} />
-                      <span className="text-sm font-medium">{deal.stage.name}</span>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {deal.value ? formatCurrency(deal.value, deal.currency) : "-"} &middot; {deal.probability}%
-                    </div>
-                  </div>
-                )) : <p className="text-xs text-muted-foreground">Nu este în pipeline.</p>}
-
+                {/* Row 4: Follow-up */}
                 <div className="pt-2 border-t">
-                  <MoveDropdown
-                    leadId={leadId}
-                    stages={availableStages}
-                    currentStageName={currentStageName}
-                    brand={lead.brand}
-                    onMoved={fetchLead}
-                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">Follow-up:</span>
+                    {lead.followUpAt ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Bell className="h-3.5 w-3.5 text-amber-500" />
+                        <span className="text-sm font-medium text-gray-900">{formatDate(lead.followUpAt)}</span>
+                        {lead.followUpNote && <span className="text-xs text-muted-foreground truncate">— {lead.followUpNote}</span>}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground flex-1">Nesetat</span>
+                    )}
+                    <button onClick={() => setShowFollowUp(!showFollowUp)} className="text-xs text-gray-700 hover:text-gray-900 border rounded-md px-2 py-1 flex items-center gap-1">
+                      <Bell className="h-3 w-3" /> {lead.followUpAt ? "Modifică" : "Programează"}
+                    </button>
+                  </div>
+                  {showFollowUp && (
+                    <div className="mt-2 space-y-2 bg-muted/30 rounded-md p-2">
+                      <input
+                        type="date"
+                        value={followUpDate}
+                        onChange={(e) => setFollowUpDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        className="w-full rounded-md border px-3 py-1.5 text-sm"
+                      />
+                      <textarea
+                        value={followUpNote}
+                        onChange={(e) => setFollowUpNote(e.target.value)}
+                        placeholder="Ce trebuie făcut? (ex: Sună clientul)"
+                        className="w-full rounded-md border px-3 py-1.5 text-sm resize-none"
+                        rows={2}
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => setShowFollowUp(false)} className="px-3 py-1 text-xs rounded-md border hover:bg-muted">Anulează</button>
+                        <button
+                          onClick={saveFollowUp}
+                          disabled={!followUpDate || !followUpNote.trim() || savingFollowUp}
+                          className="px-3 py-1 text-xs rounded-md bg-gray-900 text-white disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {savingFollowUp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
+                          Salvează
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
 
-            {/* Follow-up */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Follow-up</h3>
-                <button onClick={() => setShowFollowUp(!showFollowUp)} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                  <Bell className="h-3 w-3" /> Programează
-                </button>
-              </div>
-              {showFollowUp && (
-                <div className="rounded-lg border p-3 space-y-2">
-                  <input
-                    type="date"
-                    value={followUpDate}
-                    onChange={(e) => setFollowUpDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    className="w-full rounded-md border px-3 py-1.5 text-sm"
-                  />
+                {/* Row 5: Note admin */}
+                <div className="pt-2 border-t">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm text-muted-foreground">Note admin:</span>
+                  </div>
                   <textarea
-                    value={followUpNote}
-                    onChange={(e) => setFollowUpNote(e.target.value)}
-                    placeholder="Ce trebuie făcut? (ex: Sună clientul)"
+                    value={adminNote}
+                    onChange={(e) => setAdminNote(e.target.value)}
+                    placeholder="Adaugă observații interne..."
                     className="w-full rounded-md border px-3 py-1.5 text-sm resize-none"
                     rows={2}
                   />
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => setShowFollowUp(false)} className="px-3 py-1 text-xs rounded-md border hover:bg-muted">Anulează</button>
-                    <button
-                      onClick={saveFollowUp}
-                      disabled={!followUpDate || !followUpNote.trim() || savingFollowUp}
-                      className="px-3 py-1 text-xs rounded-md bg-primary text-primary-foreground disabled:opacity-50 flex items-center gap-1"
-                    >
-                      {savingFollowUp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
-                      Salvează
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Customer History */}
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                <History className="h-3.5 w-3.5" /> Istoric Client
-              </h3>
-              {loadingHistory ? (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground p-2"><Loader2 className="h-3 w-3 animate-spin" /> Se încarcă...</div>
-              ) : customerHistory ? (
-                <div className="rounded-lg border p-3 space-y-2 text-xs">
-                  {(customerHistory.leads as { id: string; status: string; source: string; createdAt: string; notes: string | null }[]).length > 0 && (
-                    <div>
-                      <p className="font-medium text-muted-foreground mb-1">Alte lead-uri ({(customerHistory.leads as unknown[]).length})</p>
-                      {(customerHistory.leads as { id: string; status: string; source: string; createdAt: string; notes: string | null }[]).map((ol) => (
-                        <div key={ol.id} className="flex items-center justify-between py-1 border-b last:border-0">
-                          <span><Badge className={`${STATUS_COLORS[ol.status]} text-xs`}>{STATUS_LABELS[ol.status]}</Badge> {SOURCE_LABELS[ol.source] || ol.source}</span>
-                          <span className="text-muted-foreground">{formatDate(ol.createdAt)}</span>
-                        </div>
-                      ))}
+                  {adminNote !== (lead.adminNotes || "") && (
+                    <div className="flex justify-end gap-2 mt-1">
+                      <button
+                        onClick={() => setAdminNote(lead.adminNotes || "")}
+                        className="px-3 py-1 text-xs rounded-md border hover:bg-muted"
+                      >
+                        Anulează
+                      </button>
+                      <button
+                        onClick={saveAdminNote}
+                        disabled={savingAdminNote}
+                        className="px-3 py-1 text-xs rounded-md bg-gray-900 text-white disabled:opacity-50"
+                      >
+                        {savingAdminNote ? "..." : "Salvează"}
+                      </button>
                     </div>
                   )}
-                  {(customerHistory.testDrives as { id: string; scheduledAt: string; status: string; vehicle: { make: { name: string }; model: { name: string } } | null }[]).length > 0 && (
-                    <div>
-                      <p className="font-medium text-muted-foreground mb-1">Test Drive-uri ({(customerHistory.testDrives as unknown[]).length})</p>
-                      {(customerHistory.testDrives as { id: string; scheduledAt: string; status: string; vehicle: { make: { name: string }; model: { name: string } } | null }[]).map((td) => (
-                        <div key={td.id} className="flex items-center justify-between py-1 border-b last:border-0">
-                          <span>{td.vehicle ? `${td.vehicle.make.name} ${td.vehicle.model.name}` : "—"}</span>
-                          <span className="text-muted-foreground">{formatDate(td.scheduledAt)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {(customerHistory.leads as unknown[]).length === 0 && (customerHistory.testDrives as unknown[]).length === 0 && (
-                    <p className="text-muted-foreground">Prima interacțiune cu acest client.</p>
-                  )}
                 </div>
-              ) : null}
+              </div>
             </div>
 
             {/* Activity Timeline */}
