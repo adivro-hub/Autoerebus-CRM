@@ -150,10 +150,10 @@ export default function SyncPage() {
       {/* ─── Autorulate Sync Section ─── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Sincronizare Autorulate
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Importa si actualizeaza vehiculele din site-ul Autorulate in CRM
           </p>
         </div>
@@ -191,12 +191,12 @@ export default function SyncPage() {
           </CardContent>
           {result.errors.length > 0 && (
             <CardContent className="border-t border-green-200 p-4">
-              <p className="mb-2 text-xs font-medium text-green-900">
+              <p className="mb-2 text-sm font-medium text-green-900">
                 Erori:
               </p>
               <div className="space-y-1">
                 {result.errors.map((err, i) => (
-                  <p key={i} className="text-xs text-red-600">
+                  <p key={i} className="text-sm text-red-600">
                     {err}
                   </p>
                 ))}
@@ -208,7 +208,7 @@ export default function SyncPage() {
 
       {!preview && !loading && (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-gray-500">
             <ArrowUpDown className="mb-3 h-10 w-10" />
             <p className="font-medium">
               Apasati &ldquo;Verifica Modificari&rdquo; pentru a incepe
@@ -226,32 +226,32 @@ export default function SyncPage() {
           <div className="grid gap-4 sm:grid-cols-4">
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-500">
                   Total Autorulate
                 </p>
-                <p className="text-2xl font-bold">
+                <p className="text-base font-bold">
                   {preview.totalInAutorulate}
                 </p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Total in CRM</p>
-                <p className="text-2xl font-bold">{preview.totalInCRM}</p>
+                <p className="text-sm text-gray-500">Total in CRM</p>
+                <p className="text-base font-bold">{preview.totalInCRM}</p>
               </CardContent>
             </Card>
             <Card className={preview.newCars.length > 0 ? "border-blue-300" : ""}>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Masini Noi</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-sm text-gray-500">Masini Noi</p>
+                <p className="text-base font-bold text-blue-600">
                   {preview.newCars.length}
                 </p>
               </CardContent>
             </Card>
             <Card className={preview.updatedCars.length > 0 ? "border-orange-300" : ""}>
               <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">Modificate</p>
-                <p className="text-2xl font-bold text-orange-600">
+                <p className="text-sm text-gray-500">Modificate</p>
+                <p className="text-base font-bold text-orange-600">
                   {preview.updatedCars.length}
                 </p>
               </CardContent>
@@ -353,7 +353,7 @@ export default function SyncPage() {
                           key={car.id}
                           className="border-b hover:bg-muted/30"
                         >
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className="px-4 py-2 font-mono text-sm">
                             #{car.id}
                           </td>
                           <td className="px-4 py-2 font-medium">
@@ -365,13 +365,13 @@ export default function SyncPage() {
                               ? `${car.price.toLocaleString("ro-RO")} EUR`
                               : "-"}
                           </td>
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className="px-4 py-2 font-mono text-sm">
                             {car.vin ?? "-"}
                           </td>
                           <td className="px-4 py-2">
                             <Badge variant="outline">{car.status}</Badge>
                           </td>
-                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                          <td className="px-4 py-2 text-sm text-gray-500">
                             {new Date(car.updatedAt).toLocaleString("ro-RO")}
                           </td>
                         </tr>
@@ -426,7 +426,7 @@ export default function SyncPage() {
                           key={car.id}
                           className="border-b hover:bg-muted/30"
                         >
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className="px-4 py-2 font-mono text-sm">
                             #{car.id}
                           </td>
                           <td className="px-4 py-2 font-medium">
@@ -438,13 +438,13 @@ export default function SyncPage() {
                               ? `${car.price.toLocaleString("ro-RO")} EUR`
                               : "-"}
                           </td>
-                          <td className="px-4 py-2 font-mono text-xs">
+                          <td className="px-4 py-2 font-mono text-sm">
                             {car.vin ?? "-"}
                           </td>
                           <td className="px-4 py-2">
                             <Badge variant="secondary">{car.status}</Badge>
                           </td>
-                          <td className="px-4 py-2 text-xs text-muted-foreground">
+                          <td className="px-4 py-2 text-sm text-gray-500">
                             {new Date(car.updatedAt).toLocaleString("ro-RO")}
                           </td>
                         </tr>
@@ -461,10 +461,10 @@ export default function SyncPage() {
       {/* ─── CSV Import/Export Section ─── */}
       <div className="border-t pt-8">
         <div className="mb-6">
-          <h2 className="font-heading text-xl font-bold tracking-tight">
+          <h2 className="font-heading text-base font-bold tracking-tight">
             Import / Export CSV
           </h2>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             Exporta sau importa vehicule in format CSV
           </p>
         </div>
@@ -476,7 +476,7 @@ export default function SyncPage() {
               <FileDown className="h-10 w-10 text-blue-600" />
               <div className="text-center">
                 <p className="font-medium">Export CSV</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-gray-500">
                   Descarca toate vehiculele din CRM in format CSV
                 </p>
               </div>
@@ -493,7 +493,7 @@ export default function SyncPage() {
               <FileUp className="h-10 w-10 text-green-600" />
               <div className="text-center">
                 <p className="font-medium">Import CSV</p>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-gray-500">
                   Importa vehicule din fisier CSV. Coloane obligatorii: Marca, Model, An, Pret, Combustibil, Transmisie, Brand
                 </p>
               </div>
@@ -534,9 +534,9 @@ export default function SyncPage() {
               </div>
               {csvResult.errors.length > 0 && (
                 <div className="mt-3 space-y-1">
-                  <p className="text-xs font-medium text-green-900">Erori:</p>
+                  <p className="text-sm font-medium text-green-900">Erori:</p>
                   {csvResult.errors.map((err, i) => (
-                    <p key={i} className="text-xs text-red-600">{err}</p>
+                    <p key={i} className="text-sm text-red-600">{err}</p>
                   ))}
                 </div>
               )}

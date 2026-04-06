@@ -90,12 +90,12 @@ export default async function VehicleDetailPage({ params }: PageProps) {
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-2xl font-bold">
+              <h1 className="font-heading text-base font-bold">
                 {vehicle.make.name} {vehicle.model.name} ({vehicle.year})
               </h1>
               <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               VIN: {vehicle.vin ?? "Nespecificat"}
             </p>
           </div>
@@ -121,7 +121,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
             <CardTitle className="text-base">Pret</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">
+            <p className="text-base font-bold">
               {formatCurrency(vehicle.price, vehicle.currency)}
             </p>
           </CardContent>
@@ -149,7 +149,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 Nicio fotografie adaugata
               </p>
             )}
@@ -166,7 +166,7 @@ export default async function VehicleDetailPage({ params }: PageProps) {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             {details.map((detail) => (
               <div key={detail.label}>
-                <p className="text-xs text-muted-foreground">{detail.label}</p>
+                <p className="text-sm text-gray-500">{detail.label}</p>
                 <p className="text-sm font-medium">{detail.value}</p>
               </div>
             ))}

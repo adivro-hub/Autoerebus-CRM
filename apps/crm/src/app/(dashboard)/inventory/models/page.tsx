@@ -52,10 +52,10 @@ export default async function ModelsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Modele Auto
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {models.length} modele{makeFilter ? " filtrate" : " in total"}
           </p>
         </div>
@@ -64,7 +64,7 @@ export default async function ModelsPage({ searchParams }: PageProps) {
       <Card>
         <CardContent className="p-0">
           {models.length === 0 && !makeFilter ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Layers className="mb-3 h-10 w-10" />
               <p className="font-medium">Niciun model adaugat</p>
               <p className="text-sm">Adaugati primul model auto</p>

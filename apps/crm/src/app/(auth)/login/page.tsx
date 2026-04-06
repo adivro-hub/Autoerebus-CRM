@@ -43,12 +43,12 @@ export default function LoginPage() {
       {/* Left panel - Branding */}
       <div className="hidden w-1/2 flex-col justify-between bg-primary p-12 text-primary-foreground lg:flex">
         <div>
-          <h1 className="font-heading text-3xl font-bold">Autoerebus</h1>
+          <h1 className="font-heading text-base font-bold">Autoerebus</h1>
           <p className="mt-1 text-primary-foreground/70">CRM Platform</p>
         </div>
         <div className="space-y-6">
           <div className="space-y-2">
-            <h2 className="font-heading text-2xl font-semibold">
+            <h2 className="font-heading text-base font-semibold">
               Gestioneaza-ti afacerea eficient
             </h2>
             <p className="text-primary-foreground/70">
@@ -57,16 +57,16 @@ export default function LoginPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="rounded-lg bg-primary-foreground/10 p-4">
-              <p className="text-2xl font-bold">4</p>
+              <p className="text-base font-bold">4</p>
               <p className="text-sm text-primary-foreground/70">Branduri</p>
             </div>
             <div className="rounded-lg bg-primary-foreground/10 p-4">
-              <p className="text-2xl font-bold">360&deg;</p>
+              <p className="text-base font-bold">360&deg;</p>
               <p className="text-sm text-primary-foreground/70">Vizibilitate</p>
             </div>
           </div>
         </div>
-        <p className="text-xs text-primary-foreground/50">
+        <p className="text-sm text-primary-foreground/50">
           &copy; {new Date().getFullYear()} Autoerebus. Toate drepturile rezervate.
         </p>
       </div>
@@ -75,15 +75,15 @@ export default function LoginPage() {
       <div className="flex w-full items-center justify-center p-8 lg:w-1/2">
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden">
-            <h1 className="font-heading text-2xl font-bold">Autoerebus</h1>
-            <p className="text-muted-foreground">CRM Platform</p>
+            <h1 className="font-heading text-base font-bold">Autoerebus</h1>
+            <p className="text-gray-500">CRM Platform</p>
           </div>
 
           <div className="space-y-2">
-            <h2 className="font-heading text-2xl font-semibold tracking-tight">
+            <h2 className="font-heading text-base font-semibold tracking-tight">
               Autentificare
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               Introduceti datele de conectare pentru a accesa platforma
             </p>
           </div>
@@ -124,7 +124,7 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-muted-foreground">
+          <p className="text-center text-sm text-gray-500">
             Contactati administratorul pentru resetarea parolei
           </p>
         </div>

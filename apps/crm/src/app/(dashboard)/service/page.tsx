@@ -99,10 +99,10 @@ export default async function ServicePage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Comenzi Service
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {total} comenzi in total
           </p>
         </div>
@@ -127,14 +127,14 @@ export default async function ServicePage({ searchParams }: PageProps) {
                 />
                 <h3 className="text-sm font-semibold">{stage.name}</h3>
               </div>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-sm">
                 {stage.orders.length}
               </Badge>
             </div>
 
             <div className="flex flex-1 flex-col gap-2 p-2">
               {stage.orders.length === 0 ? (
-                <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+                <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-sm text-gray-500">
                   Nicio comanda
                 </div>
               ) : (
@@ -142,11 +142,11 @@ export default async function ServicePage({ searchParams }: PageProps) {
                   <Card key={order.id}>
                     <CardContent className="p-3">
                       <div className="flex items-start justify-between">
-                        <p className="text-xs font-mono text-muted-foreground">
+                        <p className="text-sm font-mono text-gray-500">
                           #{order.orderNumber.slice(-8)}
                         </p>
                         {order.type && (
-                          <Badge variant="outline" className="text-[10px]">
+                          <Badge variant="outline" className="text-sm">
                             {order.type}
                           </Badge>
                         )}
@@ -155,17 +155,17 @@ export default async function ServicePage({ searchParams }: PageProps) {
                         {order.customer.firstName} {order.customer.lastName}
                       </p>
                       {order.vehicle && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-gray-500">
                           {order.vehicle.make.name} {order.vehicle.model.name} ({order.vehicle.year})
                         </p>
                       )}
                       {order.scheduledDate && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-sm text-gray-500">
                           Programat: {formatDate(order.scheduledDate)}
                         </p>
                       )}
                       {(order.estimatedCost || order.actualCost) && (
-                        <p className="mt-1 text-xs font-medium">
+                        <p className="mt-1 text-sm font-medium">
                           {order.actualCost
                             ? formatCurrency(order.actualCost, order.currency)
                             : `~${formatCurrency(order.estimatedCost!, order.currency)}`}

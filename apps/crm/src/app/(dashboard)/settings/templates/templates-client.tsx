@@ -105,8 +105,8 @@ export default function TemplatesClient({ initialTemplates }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Template-uri notificări</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-base font-semibold">Template-uri notificări</h1>
+        <p className="text-sm text-gray-500">
           Editează conținutul mesajelor trimise automat. Folosește placeholders {`{{varName}}`} pentru date dinamice.
         </p>
       </div>
@@ -122,7 +122,7 @@ export default function TemplatesClient({ initialTemplates }: Props) {
                   <div className="flex items-center gap-2">
                     {channelIcon(tpl.channel)}
                     <CardTitle className="text-base">{KEY_LABELS[tpl.key] || tpl.key}</CardTitle>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-sm">
                       {tpl.channel}
                     </Badge>
                     {!tpl.enabled && (
@@ -158,7 +158,7 @@ export default function TemplatesClient({ initialTemplates }: Props) {
               <CardContent className="space-y-3">
                 {tpl.channel === "EMAIL" && (
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                    <label className="mb-1 block text-sm font-medium text-gray-500">
                       Subiect email
                     </label>
                     {isEditing ? (
@@ -169,7 +169,7 @@ export default function TemplatesClient({ initialTemplates }: Props) {
                   </div>
                 )}
                 <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  <label className="mb-1 block text-sm font-medium text-gray-500">
                     Conținut
                   </label>
                   {isEditing ? (
@@ -181,7 +181,7 @@ export default function TemplatesClient({ initialTemplates }: Props) {
                       maxLength={tpl.channel === "SMS" ? 160 : undefined}
                     />
                   ) : (
-                    <pre className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-xs font-mono">
+                    <pre className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm font-mono">
                       {tpl.body}
                     </pre>
                   )}
@@ -189,12 +189,12 @@ export default function TemplatesClient({ initialTemplates }: Props) {
 
                 {placeholders.length > 0 && (
                   <div>
-                    <p className="mb-1 text-xs font-medium text-muted-foreground">
+                    <p className="mb-1 text-sm font-medium text-gray-500">
                       Variabile disponibile:
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {placeholders.map((ph) => (
-                        <Badge key={ph} variant="outline" className="text-xs font-mono">
+                        <Badge key={ph} variant="outline" className="text-sm font-mono">
                           {`{{${ph}}}`}
                         </Badge>
                       ))}

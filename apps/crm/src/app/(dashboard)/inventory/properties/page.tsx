@@ -69,10 +69,10 @@ export default async function PropertiesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Proprietati Vehicule
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {makes.length} marci, {makes.reduce((s, m) => s + m._count.models, 0)} modele, {totalCount} optiuni proprietati
           </p>
         </div>
@@ -83,7 +83,7 @@ export default async function PropertiesPage() {
 
       {/* Property Options */}
       {totalCount === 0 && Object.keys(grouped).length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <div className="flex flex-col items-center justify-center py-12 text-gray-500">
           <Settings2 className="mb-3 h-10 w-10" />
           <p className="font-medium">Nicio proprietate adaugata</p>
           <p className="text-sm">

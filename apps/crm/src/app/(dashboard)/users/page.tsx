@@ -59,10 +59,10 @@ export default async function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Utilizatori
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {users.length} utilizatori inregistrati
           </p>
         </div>
@@ -76,7 +76,7 @@ export default async function UsersPage() {
       <Card>
         <CardContent className="p-0">
           {users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <UserCog className="mb-3 h-10 w-10" />
               <p className="font-medium">Niciun utilizator gasit</p>
               <p className="text-sm">Adaugati primul utilizator</p>
@@ -109,7 +109,7 @@ export default async function UsersPage() {
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                               {user.firstName.charAt(0)}
                               {user.lastName.charAt(0)}
                             </div>
@@ -118,14 +118,14 @@ export default async function UsersPage() {
                                 {user.firstName} {user.lastName}
                               </p>
                               {user.phone && (
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-sm text-gray-500">
                                   {user.phone}
                                 </p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-3 text-gray-500">
                           {user.email}
                         </td>
                         <td className="px-4 py-3">
@@ -140,7 +140,7 @@ export default async function UsersPage() {
                               <Badge
                                 key={brand}
                                 variant="secondary"
-                                className="text-[10px]"
+                                className="text-sm"
                               >
                                 {BRAND_LABELS[brand as keyof typeof BRAND_LABELS] ?? brand}
                               </Badge>
@@ -152,7 +152,7 @@ export default async function UsersPage() {
                             {user.active ? "Activ" : "Inactiv"}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-3 text-gray-500">
                           {user.lastLoginAt
                             ? formatDateTime(user.lastLoginAt)
                             : "Niciodata"}

@@ -144,16 +144,16 @@ export function CustomerOverlay({
       <div className="relative h-full w-full max-w-lg overflow-y-auto bg-white shadow-xl animate-in slide-in-from-right">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4">
-          <h2 className="text-lg font-semibold">Istoric Client</h2>
+          <h2 className="text-base font-semibold">Istoric Client</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center p-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-gray-500" />
           </div>
         ) : !data ? (
-          <div className="p-6 text-center text-muted-foreground">Clientul nu a fost găsit.</div>
+          <div className="p-6 text-center text-gray-500">Clientul nu a fost găsit.</div>
         ) : (
           <div className="p-4 space-y-5">
             {/* Customer Info */}
@@ -168,7 +168,7 @@ export function CustomerOverlay({
                       {data.customer.firstName} {data.customer.lastName}
                     </h3>
                     {data.customer.company && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <p className="text-sm text-gray-500 flex items-center gap-1">
                         <Building className="h-3 w-3" /> {data.customer.company}
                       </p>
                     )}
@@ -187,13 +187,13 @@ export function CustomerOverlay({
                     </a>
                   )}
                   {(data.customer.city || data.customer.county) && (
-                    <span className="flex items-center gap-2 text-muted-foreground">
+                    <span className="flex items-center gap-2 text-gray-500">
                       <MapPin className="h-3.5 w-3.5" /> {[data.customer.city, data.customer.county].filter(Boolean).join(", ")}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-muted-foreground pt-2 border-t">
+                <div className="flex items-center gap-3 text-sm text-gray-500 pt-2 border-t">
                   {data.customer.source && (
                     <span>Sursa: {SOURCE_LABELS[data.customer.source] || data.customer.source}</span>
                   )}
@@ -206,25 +206,25 @@ export function CustomerOverlay({
             <div className="grid grid-cols-3 gap-3">
               <div className="rounded-lg border p-3 text-center">
                 <TrendingUp className="h-4 w-4 mx-auto text-blue-600 mb-1" />
-                <p className="text-lg font-bold">{data.leads.length}</p>
-                <p className="text-xs text-muted-foreground">Lead-uri</p>
+                <p className="text-base font-bold">{data.leads.length}</p>
+                <p className="text-sm text-gray-500">Lead-uri</p>
               </div>
               <div className="rounded-lg border p-3 text-center">
                 <Calendar className="h-4 w-4 mx-auto text-cyan-600 mb-1" />
-                <p className="text-lg font-bold">{data.testDrives.length}</p>
-                <p className="text-xs text-muted-foreground">Test Drive</p>
+                <p className="text-base font-bold">{data.testDrives.length}</p>
+                <p className="text-sm text-gray-500">Test Drive</p>
               </div>
               <div className="rounded-lg border p-3 text-center">
                 <Wrench className="h-4 w-4 mx-auto text-green-600 mb-1" />
-                <p className="text-lg font-bold">{data.serviceOrders.length}</p>
-                <p className="text-xs text-muted-foreground">Service</p>
+                <p className="text-base font-bold">{data.serviceOrders.length}</p>
+                <p className="text-sm text-gray-500">Service</p>
               </div>
             </div>
 
             {/* Leads */}
             {data.leads.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                   <TrendingUp className="h-3.5 w-3.5" /> Lead-uri ({data.leads.length})
                 </h3>
                 <div className="space-y-2">
@@ -232,29 +232,29 @@ export function CustomerOverlay({
                     <div key={lead.id} className="rounded-lg border p-3 space-y-1.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Badge className={STATUS_COLORS[lead.status] + " text-xs"}>
+                          <Badge className={STATUS_COLORS[lead.status] + " text-sm"}>
                             {STATUS_LABELS[lead.status] || lead.status}
                           </Badge>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-sm">
                             {BRAND_LABELS[lead.brand] || lead.brand}
                           </Badge>
                         </div>
-                        <span className="text-xs text-muted-foreground">{formatDate(lead.createdAt)}</span>
+                        <span className="text-sm text-gray-500">{formatDate(lead.createdAt)}</span>
                       </div>
 
                       {lead.vehicle && (
                         <div className="flex items-center gap-1.5 text-sm">
-                          <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Car className="h-3.5 w-3.5 text-gray-500" />
                           {lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name} ${lead.vehicle.year}`}
                         </div>
                       )}
 
                       {lead.deals[0] && (
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-2 text-sm">
                           <div className="h-2 w-2 rounded-full" style={{ backgroundColor: lead.deals[0].stage.color }} />
                           <span>{lead.deals[0].stage.name}</span>
                           {lead.deals[0].value && (
-                            <span className="text-muted-foreground">
+                            <span className="text-gray-500">
                               {lead.deals[0].value.toLocaleString("ro-RO")} {lead.deals[0].currency}
                             </span>
                           )}
@@ -262,10 +262,10 @@ export function CustomerOverlay({
                       )}
 
                       {lead.notes && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">{lead.notes}</p>
+                        <p className="text-sm text-gray-500 line-clamp-2">{lead.notes}</p>
                       )}
 
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-sm text-gray-500">
                         Sursa: {SOURCE_LABELS[lead.source] || lead.source}
                       </div>
                     </div>
@@ -277,7 +277,7 @@ export function CustomerOverlay({
             {/* Test Drives */}
             {data.testDrives.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5" /> Test Drive-uri ({data.testDrives.length})
                 </h3>
                 <div className="space-y-2">
@@ -286,22 +286,22 @@ export function CustomerOverlay({
                     return (
                       <div key={td.id} className="rounded-lg border p-3 space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <Badge className={st.color + " text-xs"}>{st.label}</Badge>
-                          <span className="text-xs text-muted-foreground">{formatDateTime(td.scheduledAt)}</span>
+                          <Badge className={st.color + " text-sm"}>{st.label}</Badge>
+                          <span className="text-sm text-gray-500">{formatDateTime(td.scheduledAt)}</span>
                         </div>
                         {td.vehicle && (
                           <div className="flex items-center gap-1.5 text-sm">
-                            <Car className="h-3.5 w-3.5 text-muted-foreground" />
+                            <Car className="h-3.5 w-3.5 text-gray-500" />
                             {td.vehicle.title || `${td.vehicle.make.name} ${td.vehicle.model.name} ${td.vehicle.year}`}
                           </div>
                         )}
                         {td.feedback && (
-                          <p className="text-xs"><span className="font-medium">Feedback:</span> {td.feedback}</p>
+                          <p className="text-sm"><span className="font-medium">Feedback:</span> {td.feedback}</p>
                         )}
                         {td.notes && (
-                          <p className="text-xs text-muted-foreground line-clamp-2">{td.notes}</p>
+                          <p className="text-sm text-gray-500 line-clamp-2">{td.notes}</p>
                         )}
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-sm text-gray-500">
                           Brand: {BRAND_LABELS[td.brand] || td.brand}
                         </div>
                       </div>
@@ -314,18 +314,18 @@ export function CustomerOverlay({
             {/* Service Orders */}
             {data.serviceOrders.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
                   <Wrench className="h-3.5 w-3.5" /> Comenzi Service ({data.serviceOrders.length})
                 </h3>
                 <div className="space-y-2">
                   {data.serviceOrders.map((so) => (
                     <div key={so.id} className="rounded-lg border p-3 flex items-center justify-between">
                       <div>
-                        <Badge variant="outline" className="text-xs">{so.type}</Badge>
-                        <span className="text-xs text-muted-foreground ml-2">{so.status}</span>
-                        {so.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{so.description}</p>}
+                        <Badge variant="outline" className="text-sm">{so.type}</Badge>
+                        <span className="text-sm text-gray-500 ml-2">{so.status}</span>
+                        {so.description && <p className="text-sm text-gray-500 mt-1 line-clamp-1">{so.description}</p>}
                       </div>
-                      <span className="text-xs text-muted-foreground">{formatDate(so.createdAt)}</span>
+                      <span className="text-sm text-gray-500">{formatDate(so.createdAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -334,7 +334,7 @@ export function CustomerOverlay({
 
             {/* Empty state */}
             {data.leads.length === 0 && data.testDrives.length === 0 && data.serviceOrders.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-gray-500">
                 <User className="h-8 w-8 mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Nicio interacțiune anterioară cu acest client.</p>
               </div>

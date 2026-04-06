@@ -30,10 +30,10 @@ export default async function MakesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Marci Auto
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {makes.length} marci in total
           </p>
         </div>
@@ -42,7 +42,7 @@ export default async function MakesPage() {
       <Card>
         <CardContent className="p-0">
           {makes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Tags className="mb-3 h-10 w-10" />
               <p className="font-medium">Nicio marca adaugata</p>
               <p className="text-sm">Adaugati prima marca auto</p>

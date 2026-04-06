@@ -110,9 +110,9 @@ export function PropertiesClient({ grouped }: PropertiesClientProps) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {isExpanded ? (
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
                     ) : (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
                     )}
                     <CardTitle className="text-base">
                       {CATEGORY_LABELS[cat] ?? cat}
@@ -136,7 +136,7 @@ export function PropertiesClient({ grouped }: PropertiesClientProps) {
               {isExpanded && (
                 <CardContent className="pt-0">
                   {items.length === 0 ? (
-                    <p className="py-4 text-center text-sm text-muted-foreground">
+                    <p className="py-4 text-center text-sm text-gray-500">
                       Nicio optiune adaugata in aceasta categorie
                     </p>
                   ) : (
@@ -167,11 +167,11 @@ export function PropertiesClient({ grouped }: PropertiesClientProps) {
                               key={item.id}
                               className="border-b transition-colors hover:bg-muted/30"
                             >
-                              <td className="px-4 py-2 font-mono text-xs">
+                              <td className="px-4 py-2 font-mono text-sm">
                                 {item.value}
                               </td>
                               <td className="px-4 py-2">{item.label}</td>
-                              <td className="px-4 py-2 text-muted-foreground">
+                              <td className="px-4 py-2 text-gray-500">
                                 {item.order}
                               </td>
                               <td className="px-4 py-2">

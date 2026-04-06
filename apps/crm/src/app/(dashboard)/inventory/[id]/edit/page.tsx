@@ -207,14 +207,14 @@ export default function EditVehiclePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
   }
 
   if (!vehicle) {
     return (
-      <div className="py-20 text-center text-muted-foreground">
+      <div className="py-20 text-center text-gray-500">
         Vehiculul nu a fost gasit.
       </div>
     );
@@ -229,8 +229,8 @@ export default function EditVehiclePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="font-heading text-2xl font-bold">Editeaza Vehicul</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-base font-bold">Editeaza Vehicul</h1>
+          <p className="text-sm text-gray-500">
             {vehicle.brand} - Modificati datele vehiculului
           </p>
         </div>
@@ -347,7 +347,7 @@ export default function EditVehiclePage() {
                     <button
                       type="button"
                       onClick={() => setBadgeModalOpen(true)}
-                      className="text-xs text-muted-foreground hover:text-gray-900 underline"
+                      className="text-sm text-gray-500 hover:text-gray-900 underline"
                     >
                       ({badgeText})
                     </button>
@@ -545,7 +545,7 @@ export default function EditVehiclePage() {
               rows={4}
               defaultValue={vehicle.description ?? ""}
               placeholder="Descriere vehicul..."
-              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </CardContent>
         </Card>
@@ -591,7 +591,7 @@ export default function EditVehiclePage() {
                     <h4 className="text-sm font-semibold text-gray-900">{cat.name}</h4>
                     <button
                       type="button"
-                      className="text-xs text-muted-foreground hover:text-gray-900"
+                      className="text-sm text-gray-500 hover:text-gray-900"
                       onClick={() => {
                         const allIds = cat.items.map((i) => i.id);
                         const allSelected = allIds.every((iid) => selectedEquipment.has(iid));
@@ -672,7 +672,7 @@ export default function EditVehiclePage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => { if (!specialBadge) setBadgeModalOpen(false); }}>
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">Badge Special</h3>
-            <p className="text-sm text-muted-foreground">Introdu textul care va apărea ca badge pe acest vehicul.</p>
+            <p className="text-sm text-gray-500">Introdu textul care va apărea ca badge pe acest vehicul.</p>
             <input
               type="text"
               value={badgeText}

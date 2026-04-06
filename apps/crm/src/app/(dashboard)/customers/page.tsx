@@ -103,10 +103,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Clienti
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {total} clienti in baza de date
           </p>
         </div>
@@ -119,12 +119,12 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       {/* Search & Filters */}
       <div className="flex gap-3">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
             placeholder="Cauta clienti..."
             defaultValue={params.search ?? ""}
-            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-4 text-sm placeholder:text-muted-foreground"
+            className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-4 text-sm placeholder:text-gray-500"
           />
         </div>
         <select
@@ -150,7 +150,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
       <Card>
         <CardContent className="p-0">
           {customers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Users className="mb-3 h-10 w-10" />
               <p className="font-medium">Niciun client gasit</p>
               <p className="text-sm">Adaugati un client nou sau ajustati cautarea</p>
@@ -183,7 +183,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                             {customer.firstName} {customer.lastName}
                           </p>
                           {customer.company && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-gray-500">
                               {customer.company}
                             </p>
                           )}
@@ -192,10 +192,10 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                       <td className="px-4 py-3">
                         <div className="space-y-0.5">
                           {customer.email && (
-                            <p className="text-xs">{customer.email}</p>
+                            <p className="text-sm">{customer.email}</p>
                           )}
                           {customer.phone && (
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm text-gray-500">
                               {customer.phone}
                             </p>
                           )}
@@ -209,20 +209,20 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                       <td className="px-4 py-3">
                         {customer.source ? (
                           <div>
-                            <Badge variant="secondary" className="text-xs">
+                            <Badge variant="secondary" className="text-sm">
                               {SOURCE_LABELS[customer.source] ?? customer.source}
                             </Badge>
                             {customer.sourceDetail && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">
+                              <p className="mt-0.5 text-sm text-gray-500">
                                 {customer.sourceDetail}
                               </p>
                             )}
                           </div>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-gray-500">-</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-gray-500">
                         {[customer.city, customer.county]
                           .filter(Boolean)
                           .join(", ") || "-"}
@@ -233,12 +233,12 @@ export default async function CustomersPage({ searchParams }: PageProps) {
                       <td className="px-4 py-3 text-center">
                         {customer._count.serviceOrders}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                      <td className="px-4 py-3 text-gray-500 text-sm">
                         {customer.createdBy
                           ? `${customer.createdBy.firstName} ${customer.createdBy.lastName}`
                           : (<span className="italic">Sistem</span>)}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-3 text-gray-500">
                         {formatDate(customer.createdAt)}
                       </td>
                     </tr>
@@ -250,7 +250,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t px-4 py-3">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 Pagina {page} din {totalPages}
               </p>
               <div className="flex gap-2">

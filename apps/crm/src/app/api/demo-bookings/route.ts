@@ -81,7 +81,39 @@ export async function GET(request: NextRequest) {
     take: 100,
   });
 
-  return NextResponse.json({ bookings });
+  // Batch-fetch conflicting test drive info for CONFLICTED bookings
+  const conflictIds = bookings
+    .filter((b) => b.status === "CONFLICTED" && b.conflictingTestDriveId)
+    .map((b) => b.conflictingTestDriveId!)
+    .filter((id): id is string => !!id);
+
+  let conflictTDs: Record<string, any> = {};
+  if (conflictIds.length > 0) {
+    const tds = await prisma.testDrive.findMany({
+      where: { id: { in: conflictIds } },
+      select: {
+        id: true,
+        scheduledAt: true,
+        duration: true,
+        status: true,
+        contactName: true,
+        contactPhone: true,
+        customer: { select: { firstName: true, lastName: true, phone: true } },
+      },
+    });
+    conflictTDs = Object.fromEntries(tds.map((t) => [t.id, t]));
+  }
+
+  // Also, for APPROVED bookings, check if any upcoming test drive overlaps
+  // (in case the trigger failed or for recent TDs)
+  const bookingsWithConflict = await Promise.all(
+    bookings.map(async (b) => {
+      const conflictInfo = b.conflictingTestDriveId ? conflictTDs[b.conflictingTestDriveId] : null;
+      return { ...b, conflictingTestDrive: conflictInfo };
+    })
+  );
+
+  return NextResponse.json({ bookings: bookingsWithConflict });
 }
 
 /**

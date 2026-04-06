@@ -181,18 +181,18 @@ export function ImageUploader({
       >
         {uploading ? (
           <>
-            <Loader2 className="mb-2 h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
+            <Loader2 className="mb-2 h-8 w-8 animate-spin text-gray-500" />
+            <p className="text-sm text-gray-500">
               Se incarca... {uploadProgress}
             </p>
           </>
         ) : (
           <>
-            <ImagePlus className="mb-2 h-8 w-8 text-muted-foreground" />
+            <ImagePlus className="mb-2 h-8 w-8 text-gray-500" />
             <p className="text-sm font-medium">
               Trageti imagini aici sau click pentru a selecta
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-sm text-gray-500">
               JPG, PNG, WebP.
               {images.length > 0 && ` ${images.length} imagini incarcate`}
             </p>
@@ -251,7 +251,7 @@ export function ImageUploader({
 
               {/* Order badge */}
               {index === 0 && (
-                <div className="absolute bottom-1.5 left-1.5 rounded bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
+                <div className="absolute bottom-1.5 left-1.5 rounded bg-primary px-1.5 py-0.5 text-sm font-bold text-primary-foreground">
                   Principala
                 </div>
               )}

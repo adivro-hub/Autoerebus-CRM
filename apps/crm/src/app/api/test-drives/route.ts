@@ -79,6 +79,39 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(agents);
   }
 
+  // Get scheduled test drives for a vehicle in a date range
+  // Used by demo booking modal to show upcoming test drives
+  if (type === "byVehicle") {
+    const vehicleId = searchParams.get("vehicleId");
+    if (!vehicleId) {
+      return NextResponse.json({ error: "vehicleId required" }, { status: 400 });
+    }
+    const daysAhead = parseInt(searchParams.get("daysAhead") || "14", 10);
+    const now = new Date();
+    const until = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000);
+
+    const testDrives = await prisma.testDrive.findMany({
+      where: {
+        vehicleId,
+        status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
+        scheduledAt: { gte: now, lte: until },
+      },
+      select: {
+        id: true,
+        vehicleId: true,
+        scheduledAt: true,
+        duration: true,
+        status: true,
+        contactName: true,
+        contactPhone: true,
+        customer: { select: { firstName: true, lastName: true, phone: true } },
+      },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    return NextResponse.json({ testDrives });
+  }
+
   return NextResponse.json({ error: "Invalid type" }, { status: 400 });
 }
 

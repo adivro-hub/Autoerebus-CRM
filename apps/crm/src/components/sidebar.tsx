@@ -96,7 +96,7 @@ export function Sidebar() {
               <h1 className="font-heading text-sm font-bold text-sidebar-foreground">
                 Autoerebus
               </h1>
-              <p className="text-[10px] text-muted-foreground">CRM Platform</p>
+              <p className="text-sm text-gray-500">CRM Platform</p>
             </div>
           </Link>
         )}
@@ -167,7 +167,7 @@ export function Sidebar() {
                             key={child.href}
                             href={withBrand(child.href)}
                             className={cn(
-                              "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] font-medium transition-colors",
+                              "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors",
                               isChildActive
                                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                                 : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
@@ -204,7 +204,7 @@ export function Sidebar() {
       {/* Collapse Toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-background text-muted-foreground shadow-sm hover:text-foreground"
+        className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border bg-background text-gray-500 shadow-sm hover:text-foreground"
       >
         {collapsed ? (
           <ChevronRight className="h-3 w-3" />

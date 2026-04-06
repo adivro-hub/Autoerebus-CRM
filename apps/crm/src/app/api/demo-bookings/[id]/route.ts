@@ -70,26 +70,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Rezervarea nu există" }, { status: 404 });
   }
 
-  // Check permissions
-  const userBrands = await getUserBrands(currentUserId, isSuperAdmin);
-  if (!userBrands.includes(existing.brand)) {
-    return NextResponse.json({ error: "Nu ai acces la această rezervare" }, { status: 403 });
-  }
-
-  const canEdit =
-    isSuperAdmin ||
-    existing.createdById === currentUserId ||
-    existing.userId === currentUserId;
-
-  if (!canEdit) {
-    // Check if supervisor
-    const isSupervisor = await prisma.teamMember.findFirst({
-      where: { userId: currentUserId, teamId: existing.teamId, role: "SUPERVISOR" },
-    });
-    if (!isSupervisor) {
-      return NextResponse.json({ error: "Nu ai permisiunea de a edita" }, { status: 403 });
-    }
-  }
+  // Any authenticated admin can edit any booking
 
   try {
     const body = await request.json();
@@ -183,24 +164,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Rezervarea nu mai poate fi anulată" }, { status: 400 });
   }
 
-  const userBrands = await getUserBrands(currentUserId, isSuperAdmin);
-  if (!userBrands.includes(existing.brand)) {
-    return NextResponse.json({ error: "Nu ai acces" }, { status: 403 });
-  }
-
-  const canCancel =
-    isSuperAdmin ||
-    existing.createdById === currentUserId ||
-    existing.userId === currentUserId;
-
-  if (!canCancel) {
-    const isSupervisor = await prisma.teamMember.findFirst({
-      where: { userId: currentUserId, teamId: existing.teamId, role: "SUPERVISOR" },
-    });
-    if (!isSupervisor) {
-      return NextResponse.json({ error: "Nu ai permisiunea" }, { status: 403 });
-    }
-  }
+  // Any authenticated admin can cancel any booking
 
   const body = await request.json().catch(() => ({}));
   const reason = body?.reason || null;

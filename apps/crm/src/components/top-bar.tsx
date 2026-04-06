@@ -28,17 +28,17 @@ export function TopBar() {
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-6">
       {/* Search */}
       <div className="relative flex-1 max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
         <input
           type="text"
           placeholder="Cauta vehicule, clienti, comenzi..."
-          className="h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-4 text-sm placeholder:text-muted-foreground focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+          className="h-9 w-full rounded-md border border-input bg-muted/50 pl-9 pr-4 text-sm placeholder:text-gray-500 focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring"
         />
       </div>
 
       <div className="flex items-center gap-2">
         {/* Notifications */}
-        <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground">
+        <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-gray-500 hover:bg-accent hover:text-accent-foreground">
           <Bell className="h-4 w-4" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
         </button>
@@ -49,18 +49,18 @@ export function TopBar() {
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               {initials}
             </div>
             <div className="hidden text-left md:block">
               <p className="text-sm font-medium leading-none">
                 {session?.user?.name}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 {session?.user?.role}
               </p>
             </div>
-            <ChevronDown className="h-3 w-3 text-muted-foreground" />
+            <ChevronDown className="h-3 w-3 text-gray-500" />
           </button>
 
           {userMenuOpen && (

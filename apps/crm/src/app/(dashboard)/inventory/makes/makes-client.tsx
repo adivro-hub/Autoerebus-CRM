@@ -84,11 +84,11 @@ export function MakesClient({ makes }: MakesClientProps) {
                   key={make.id}
                   className="border-b transition-colors hover:bg-muted/30"
                 >
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-4 py-3 text-gray-500">
                     {make.order}
                   </td>
                   <td className="px-4 py-3 font-medium">{make.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  <td className="px-4 py-3 font-mono text-sm text-gray-500">
                     {make.slug}
                   </td>
                   <td className="px-4 py-3">
@@ -101,7 +101,7 @@ export function MakesClient({ makes }: MakesClientProps) {
                         className="h-6 w-6 object-contain"
                       />
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className="text-gray-500">-</span>
                     )}
                   </td>
                   <td className="px-4 py-3">{make._count.models}</td>

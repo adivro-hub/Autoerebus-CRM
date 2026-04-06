@@ -39,8 +39,8 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Setări</h1>
-        <p className="text-sm text-muted-foreground">Configurare sistem CRM</p>
+        <h1 className="text-base font-semibold">Setări</h1>
+        <p className="text-sm text-gray-500">Configurare sistem CRM</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -58,7 +58,7 @@ export default async function SettingsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">{s.description}</p>
+                  <p className="text-sm text-gray-500">{s.description}</p>
                 </CardContent>
               </Card>
             </Link>

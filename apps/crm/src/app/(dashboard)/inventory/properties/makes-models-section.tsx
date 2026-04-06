@@ -162,7 +162,7 @@ export function MakesModelsSection({ makes }: Props) {
                   >
                     {expandedMakeId === make.id ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
                     <span className="text-sm font-medium">{make.name}</span>
-                    <span className="text-xs text-muted-foreground">({make._count.models} modele, {make._count.vehicles} vehicule)</span>
+                    <span className="text-sm text-gray-500">({make._count.models} modele, {make._count.vehicles} vehicule)</span>
                   </button>
                   <div className="flex items-center gap-1">
                     <button
@@ -171,13 +171,13 @@ export function MakesModelsSection({ makes }: Props) {
                         setMakeName(make.name);
                         setMakeFormOpen(true);
                       }}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-accent hover:text-foreground"
                     >
                       <Pencil className="h-3 w-3" />
                     </button>
                     <button
                       onClick={() => setDeleteTarget({ type: "make", id: make.id, name: make.name })}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>
@@ -188,14 +188,14 @@ export function MakesModelsSection({ makes }: Props) {
                 {expandedMakeId === make.id && (
                   <div className="border-t bg-muted/20 px-4 py-2">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <span className="flex items-center gap-1.5 text-sm font-medium text-gray-500">
                         <Layers className="h-3 w-3" />
                         Modele {make.name}
                       </span>
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-7 text-xs"
+                        className="h-7 text-sm"
                         onClick={() => {
                           setEditingModel(null);
                           setModelName("");
@@ -208,14 +208,14 @@ export function MakesModelsSection({ makes }: Props) {
                       </Button>
                     </div>
                     {make.models.length === 0 ? (
-                      <p className="py-2 text-xs text-muted-foreground">Niciun model</p>
+                      <p className="py-2 text-sm text-gray-500">Niciun model</p>
                     ) : (
                       <div className="space-y-1">
                         {make.models.map((model) => (
                           <div key={model.id} className="flex items-center justify-between rounded px-2 py-1.5 hover:bg-background">
                             <div className="flex items-center gap-2">
                               <span className="text-sm">{model.name}</span>
-                              <span className="text-xs text-muted-foreground">({model._count.vehicles} vehicule)</span>
+                              <span className="text-sm text-gray-500">({model._count.vehicles} vehicule)</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <button
@@ -225,13 +225,13 @@ export function MakesModelsSection({ makes }: Props) {
                                   setModelMakeId(make.id);
                                   setModelFormOpen(true);
                                 }}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:text-foreground"
                               >
                                 <Pencil className="h-2.5 w-2.5" />
                               </button>
                               <button
                                 onClick={() => setDeleteTarget({ type: "model", id: model.id, name: `${make.name} ${model.name}` })}
-                                className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-red-600"
+                                className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:text-red-600"
                               >
                                 <Trash2 className="h-2.5 w-2.5" />
                               </button>
@@ -252,7 +252,7 @@ export function MakesModelsSection({ makes }: Props) {
       {makeFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-sm rounded-lg bg-background p-6 shadow-xl">
-            <h3 className="text-lg font-semibold">{editingMake ? "Editeaza Marca" : "Adauga Marca"}</h3>
+            <h3 className="text-base font-semibold">{editingMake ? "Editeaza Marca" : "Adauga Marca"}</h3>
             {makeError && <p className="mt-2 text-sm text-destructive">{makeError}</p>}
             <div className="mt-4">
               <label className="text-sm font-medium">Nume Marca</label>
@@ -277,7 +277,7 @@ export function MakesModelsSection({ makes }: Props) {
       {modelFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="mx-4 w-full max-w-sm rounded-lg bg-background p-6 shadow-xl">
-            <h3 className="text-lg font-semibold">{editingModel ? "Editeaza Model" : "Adauga Model"}</h3>
+            <h3 className="text-base font-semibold">{editingModel ? "Editeaza Model" : "Adauga Model"}</h3>
             {modelError && <p className="mt-2 text-sm text-destructive">{modelError}</p>}
             <div className="mt-4 space-y-3">
               <div>
@@ -322,10 +322,10 @@ export function MakesModelsSection({ makes }: Props) {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">
+                <h3 className="text-base font-semibold">
                   Sterge {deleteTarget.type === "make" ? "marca" : "modelul"}
                 </h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <p className="mt-2 text-sm text-gray-500">
                   Esti sigur ca vrei sa stergi <span className="font-medium text-foreground">{deleteTarget.name}</span>?
                   {deleteTarget.type === "make" && " Toate modelele asociate vor fi de asemenea sterse."}
                 </p>

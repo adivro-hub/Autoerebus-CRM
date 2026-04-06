@@ -87,8 +87,8 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Inventar</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-base font-bold tracking-tight">Inventar</h1>
+          <p className="text-sm text-gray-500">
             {total} vehicule in total
           </p>
         </div>
@@ -107,7 +107,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
       <Card>
         <CardContent className="p-0">
           {vehicles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Car className="mb-3 h-10 w-10" />
               <p className="font-medium">Niciun vehicul gasit</p>
               <p className="text-sm">
@@ -121,7 +121,7 @@ export default async function InventoryPage({ searchParams }: PageProps) {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between border-t px-4 py-3">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-gray-500">
                 Pagina {page} din {totalPages}
               </p>
               <div className="flex gap-2">

@@ -34,7 +34,7 @@ export function InventoryNav() {
               "relative px-4 py-2.5 text-sm font-medium transition-colors hover:text-foreground",
               isActive
                 ? "text-foreground"
-                : "text-muted-foreground"
+                : "text-gray-500"
             )}
           >
             {tab.label}

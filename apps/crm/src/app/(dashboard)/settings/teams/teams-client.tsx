@@ -101,8 +101,8 @@ export default function TeamsClient({ initialTeams, allUsers }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold">Echipe</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-base font-semibold">Echipe</h1>
+        <p className="text-sm text-gray-500">
           Gestionează membrii echipelor per brand. Supervizorii pot aproba rezervările demo ale echipei.
         </p>
       </div>
@@ -121,7 +121,7 @@ export default function TeamsClient({ initialTeams, allUsers }: Props) {
                     {team.brand}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">{team.members.length} membri</p>
+                <p className="text-sm text-gray-500">{team.members.length} membri</p>
               </CardHeader>
               <CardContent className="space-y-2">
                 {team.members.map((m) => (
@@ -133,13 +133,13 @@ export default function TeamsClient({ initialTeams, allUsers }: Props) {
                       {m.role === "SUPERVISOR" ? (
                         <Crown className="h-4 w-4 text-amber-500" />
                       ) : (
-                        <UserIcon className="h-4 w-4 text-muted-foreground" />
+                        <UserIcon className="h-4 w-4 text-gray-500" />
                       )}
                       <div>
                         <p className="font-medium">
                           {m.user.firstName} {m.user.lastName}
                         </p>
-                        <p className="text-xs text-muted-foreground">{m.user.email}</p>
+                        <p className="text-sm text-gray-500">{m.user.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -163,7 +163,7 @@ export default function TeamsClient({ initialTeams, allUsers }: Props) {
                 ))}
 
                 {team.members.length === 0 && (
-                  <p className="text-xs italic text-muted-foreground">Niciun membru.</p>
+                  <p className="text-sm italic text-gray-500">Niciun membru.</p>
                 )}
 
                 {addingToTeam === team.id ? (

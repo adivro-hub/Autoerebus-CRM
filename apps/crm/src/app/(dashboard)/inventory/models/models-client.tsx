@@ -120,7 +120,7 @@ export function ModelsClient({
                 >
                   <td className="px-4 py-3">{model.make.name}</td>
                   <td className="px-4 py-3 font-medium">{model.name}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                  <td className="px-4 py-3 font-mono text-sm text-gray-500">
                     {model.slug}
                   </td>
                   <td className="px-4 py-3">{model._count.vehicles}</td>

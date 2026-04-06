@@ -84,10 +84,10 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">
+          <h1 className="font-heading text-base font-bold tracking-tight">
             Daune
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-gray-500">
             {claims.length} dosare de daune
           </p>
         </div>
@@ -112,14 +112,14 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
                 />
                 <h3 className="text-sm font-semibold">{stage.name}</h3>
               </div>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-sm">
                 {stage.claims.length}
               </Badge>
             </div>
 
             <div className="flex flex-1 flex-col gap-2 p-2">
               {stage.claims.length === 0 ? (
-                <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+                <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-sm text-gray-500">
                   Niciun dosar
                 </div>
               ) : (
@@ -127,7 +127,7 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
                   <Card key={claim.id}>
                     <CardContent className="p-3">
                       <div className="flex items-start justify-between">
-                        <p className="text-xs font-mono text-muted-foreground">
+                        <p className="text-sm font-mono text-gray-500">
                           #{claim.claimNumber.slice(-8)}
                         </p>
                       </div>
@@ -135,22 +135,22 @@ export default async function ClaimsPage({ searchParams }: PageProps) {
                         {claim.customer.firstName} {claim.customer.lastName}
                       </p>
                       {claim.vehicle && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-gray-500">
                           {claim.vehicle.make.name} {claim.vehicle.model.name} ({claim.vehicle.year})
                         </p>
                       )}
                       {claim.insuranceCompany && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-sm text-gray-500">
                           Asigurator: {claim.insuranceCompany}
                         </p>
                       )}
                       {claim.incidentDate && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-sm text-gray-500">
                           Incident: {formatDate(claim.incidentDate)}
                         </p>
                       )}
                       {(claim.estimatedCost || claim.actualCost) && (
-                        <p className="mt-1 text-xs font-medium">
+                        <p className="mt-1 text-sm font-medium">
                           {claim.actualCost
                             ? formatCurrency(claim.actualCost, claim.currency)
                             : `~${formatCurrency(claim.estimatedCost!, claim.currency)}`}

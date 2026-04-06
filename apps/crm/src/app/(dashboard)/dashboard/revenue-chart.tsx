@@ -37,11 +37,11 @@ export function RevenueChart() {
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis
             dataKey="month"
-            className="text-xs"
+            className="text-sm"
             tick={{ fill: "hsl(var(--muted-foreground))" }}
           />
           <YAxis
-            className="text-xs"
+            className="text-sm"
             tick={{ fill: "hsl(var(--muted-foreground))" }}
             tickFormatter={(value: number) =>
               `${(value / 1000).toFixed(0)}k`

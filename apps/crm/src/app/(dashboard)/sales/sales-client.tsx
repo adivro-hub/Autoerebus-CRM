@@ -258,7 +258,7 @@ function MoveModal({
         {isLost && (
           <>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Motivul pierderii *</label>
+              <label className="text-sm font-medium text-gray-500">Motivul pierderii *</label>
               <select
                 value={lostReason}
                 onChange={(e) => setLostReason(e.target.value)}
@@ -281,7 +281,7 @@ function MoveModal({
         )}
 
         <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Comentariu *</label>
+          <label className="text-sm font-medium text-gray-500">Comentariu *</label>
           <textarea
             value={comment}
             onChange={(e) => setComment(e.target.value)}
@@ -371,7 +371,7 @@ function MoveDropdown({
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-medium hover:bg-muted transition-colors"
+        className="flex items-center gap-1 rounded-md border px-2 py-1 text-sm font-medium hover:bg-muted transition-colors"
       >
         {currentStageName ? "Mută" : "Mută în pipeline"}
         <ChevronDown className="h-3 w-3" />
@@ -385,7 +385,7 @@ function MoveDropdown({
               <button
                 key={s.id}
                 onClick={() => { setPendingStage({ id: s.id, name: s.name }); setOpen(false); }}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs hover:bg-muted transition-colors"
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm hover:bg-muted transition-colors"
               >
                 <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                 {s.name}
@@ -500,11 +500,11 @@ function LeadCard({
           </span>
           <div className="flex items-center gap-1">
             {LEAD_TYPE_CONFIG[lead.type] && (
-              <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_TYPE_CONFIG[lead.type].style}`}>
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-sm font-medium ${LEAD_TYPE_CONFIG[lead.type].style}`}>
                 {LEAD_TYPE_CONFIG[lead.type].label}
               </span>
             )}
-            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${BRAND_BADGE_COLORS[lead.brand] || "border border-gray-300 text-gray-700"}`}>
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-sm font-medium ${BRAND_BADGE_COLORS[lead.brand] || "border border-gray-300 text-gray-700"}`}>
               {BRAND_SHORT_LABELS[lead.brand] || lead.brand}
             </span>
           </div>
@@ -532,7 +532,7 @@ function LeadCard({
                   title="Confirmă programarea"
                 >
                   <Check className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">Confirmă</span>
+                  <span className="text-sm font-medium">Confirmă</span>
                 </button>
                 <button
                   onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
@@ -563,7 +563,7 @@ function LeadCard({
 
                   {tdAction === "reschedule" && (
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-muted-foreground">Data și ora nouă *</label>
+                      <label className="text-sm font-medium text-gray-500">Data și ora nouă *</label>
                       <input
                         type="datetime-local"
                         value={tdNewDate}
@@ -576,7 +576,7 @@ function LeadCard({
                   )}
 
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">
+                    <label className="text-sm font-medium text-gray-500">
                       {tdAction === "confirm" ? "Observații (opțional)"
                         : tdAction === "reschedule" ? "Motiv reprogramare (opțional)"
                         : "Motiv anulare *"}
@@ -616,7 +616,7 @@ function LeadCard({
 
         <div className="flex items-center justify-end mt-3 pt-2 border-t">
           <span
-            className={`flex items-center gap-1 cursor-default mr-auto text-xs ${stale ? "text-amber-500" : "text-gray-400"}`}
+            className={`flex items-center gap-1 cursor-default mr-auto text-sm ${stale ? "text-amber-500" : "text-gray-400"}`}
             title={`Adăugat pe ${formatDate(lead.createdAt)}`}
           >
             <Clock className="h-3.5 w-3.5 shrink-0" />
@@ -640,7 +640,7 @@ function LeadCard({
                   fetch(`/api/leads/${lead.id}`, { method: "DELETE" }).then(() => onMoved(lead.id));
                 }
               }}
-              className="text-xs text-red-500 hover:text-red-700 transition-colors"
+              className="text-sm text-red-500 hover:text-red-700 transition-colors"
             >
               Șterge
             </button>
@@ -685,7 +685,7 @@ function PipelineDealCard({
     >
       <CardContent className="p-5">
         {stale && (
-          <div className="flex items-center gap-1 text-red-600 text-xs mb-1">
+          <div className="flex items-center gap-1 text-red-600 text-sm mb-1">
             <AlertTriangle className="h-3 w-3" />
             &gt;{STALE_HOURS}h neprocesat
           </div>
@@ -695,31 +695,31 @@ function PipelineDealCard({
             {deal.lead.customer.firstName} {deal.lead.customer.lastName}
           </p>
           {showBrandBadge && dealBrand && (
-            <Badge className={`text-xs px-1.5 ${BRAND_BADGE_COLORS[dealBrand] || ""}`}>
+            <Badge className={`text-sm px-1.5 ${BRAND_BADGE_COLORS[dealBrand] || ""}`}>
               {BRAND_SHORT_LABELS[dealBrand] || dealBrand}
             </Badge>
           )}
         </div>
         {deal.lead.vehicle && (
-          <p className="text-xs text-muted-foreground truncate">
+          <p className="text-sm text-gray-500 truncate">
             {deal.lead.vehicle.make.name} {deal.lead.vehicle.model.name}
             {(deal.lead.vehicle.discountPrice || deal.lead.vehicle.price) ? ` — ${((deal.lead.vehicle.discountPrice || deal.lead.vehicle.price) as number).toLocaleString("ro-RO")} €` : ""}
           </p>
         )}
         {(deal.lead as Record<string, unknown>).additionalVehicles && ((deal.lead as Record<string, unknown>).additionalVehicles as { make: { name: string }; model: { name: string }; price: number | null; discountPrice: number | null }[]).map((v, i) => (
-          <p key={i} className="text-xs text-muted-foreground truncate">
+          <p key={i} className="text-sm text-gray-500 truncate">
             {v.make.name} {v.model.name}
             {(v.discountPrice || v.price) ? ` — ${(v.discountPrice || v.price)!.toLocaleString("ro-RO")} €` : ""}
           </p>
         ))}
         {deal.assignedTo && (
-          <p className="mt-1 text-xs text-muted-foreground">
+          <p className="mt-1 text-sm text-gray-500">
             Agent: {deal.assignedTo.firstName} {deal.assignedTo.lastName}
           </p>
         )}
         <div className="mt-2 pt-2 border-t flex items-center justify-between">
           {LEAD_TYPE_CONFIG[deal.lead.type] ? (
-            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${LEAD_TYPE_CONFIG[deal.lead.type].style}`}>
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-sm font-medium ${LEAD_TYPE_CONFIG[deal.lead.type].style}`}>
               {LEAD_TYPE_CONFIG[deal.lead.type].label}
             </span>
           ) : <span />}
@@ -1024,20 +1024,20 @@ function LeadDetailOverlay({
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-6 py-4 rounded-t-xl">
-          <h2 className="text-lg font-semibold">Detalii Lead</h2>
+          <h2 className="text-base font-semibold">Detalii Lead</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+          <div className="flex items-center justify-center p-12"><Loader2 className="h-6 w-6 animate-spin text-gray-500" /></div>
         ) : !lead ? (
-          <div className="p-6 text-center text-muted-foreground">Lead-ul nu a fost găsit.</div>
+          <div className="p-6 text-center text-gray-500">Lead-ul nu a fost găsit.</div>
         ) : (
           <div className="p-4 space-y-5">
             {/* Customer */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Client</h3>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Client</h3>
                 {!editingCustomer && (
                   <button
                     onClick={() => {
@@ -1049,7 +1049,7 @@ function LeadDetailOverlay({
                       });
                       setEditingCustomer(true);
                     }}
-                    className="text-xs text-blue-600 hover:underline"
+                    className="text-sm text-blue-600 hover:underline"
                   >
                     Schimbă
                   </button>
@@ -1059,7 +1059,7 @@ function LeadDetailOverlay({
                 <div className="rounded-lg border p-3 space-y-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-muted-foreground">Prenume</label>
+                      <label className="text-sm text-gray-500">Prenume</label>
                       <input
                         className="w-full rounded-md border px-2 py-1.5 text-sm"
                         value={custForm.firstName}
@@ -1067,7 +1067,7 @@ function LeadDetailOverlay({
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Nume</label>
+                      <label className="text-sm text-gray-500">Nume</label>
                       <input
                         className="w-full rounded-md border px-2 py-1.5 text-sm"
                         value={custForm.lastName}
@@ -1076,7 +1076,7 @@ function LeadDetailOverlay({
                     </div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Telefon</label>
+                    <label className="text-sm text-gray-500">Telefon</label>
                     <input
                       className="w-full rounded-md border px-2 py-1.5 text-sm"
                       value={custForm.phone}
@@ -1084,7 +1084,7 @@ function LeadDetailOverlay({
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">Email</label>
+                    <label className="text-sm text-gray-500">Email</label>
                     <input
                       className="w-full rounded-md border px-2 py-1.5 text-sm"
                       value={custForm.email}
@@ -1108,13 +1108,13 @@ function LeadDetailOverlay({
                         } catch {}
                         setSavingCustomer(false);
                       }}
-                      className="rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white hover:bg-gray-800"
+                      className="rounded-md bg-gray-900 px-3 py-1.5 text-sm text-white hover:bg-gray-800"
                     >
                       {savingCustomer ? "..." : "Salvează"}
                     </button>
                     <button
                       onClick={() => setEditingCustomer(false)}
-                      className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                      className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
                     >
                       Anulează
                     </button>
@@ -1126,7 +1126,7 @@ function LeadDetailOverlay({
                 onClick={() => onCustomerClick?.(lead.customer.id)}
               >
                 <div className="flex items-center gap-2">
-                  <User className="h-4 w-4 text-muted-foreground" />
+                  <User className="h-4 w-4 text-gray-500" />
                   <span className="font-medium text-sm text-gray-900">
                     {lead.customer.firstName} {lead.customer.lastName}
                   </span>
@@ -1149,7 +1149,7 @@ function LeadDetailOverlay({
                   if (!msg) return null;
                   return (
                     <div className="mt-2 pt-2 border-t">
-                      <p className="text-xs text-muted-foreground mb-1">Mesajul clientului:</p>
+                      <p className="text-sm text-gray-500 mb-1">Mesajul clientului:</p>
                       <p className="text-sm text-gray-700 italic">&ldquo;{msg}&rdquo;</p>
                     </div>
                   );
@@ -1161,9 +1161,9 @@ function LeadDetailOverlay({
             {/* Vehicles */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Interesat de</h3>
+                <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Interesat de</h3>
                 {!editingVehicle && (
-                  <button onClick={() => setEditingVehicle(true)} className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                  <button onClick={() => setEditingVehicle(true)} className="text-sm text-blue-600 hover:underline flex items-center gap-1">
                     <Plus className="h-3 w-3" /> Adaugă mașină
                   </button>
                 )}
@@ -1177,7 +1177,7 @@ function LeadDetailOverlay({
                       {lead.vehicle.images?.[0] && <img src={lead.vehicle.images[0].url} alt="" className="h-14 w-20 rounded-md object-cover" />}
                       <div>
                         <p className="font-medium text-sm">{lead.vehicle.title || `${lead.vehicle.make.name} ${lead.vehicle.model.name}`}</p>
-                        <p className="text-xs text-muted-foreground">An: {lead.vehicle.year}</p>
+                        <p className="text-sm text-gray-500">An: {lead.vehicle.year}</p>
                       </div>
                     </div>
                   </Link>
@@ -1195,7 +1195,7 @@ function LeadDetailOverlay({
                       {v.images?.[0] && <img src={v.images[0].url} alt="" className="h-14 w-20 rounded-md object-cover" />}
                       <div>
                         <p className="font-medium text-sm">{v.title || `${v.make.name} ${v.model.name}`}</p>
-                        <p className="text-xs text-muted-foreground">An: {v.year}</p>
+                        <p className="text-sm text-gray-500">An: {v.year}</p>
                       </div>
                     </div>
                   </Link>
@@ -1220,7 +1220,7 @@ function LeadDetailOverlay({
               {editingVehicle && (
                 <div className="rounded-lg border p-3 space-y-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
                     <input
                       value={vSearch}
                       onChange={(e) => setVSearch(e.target.value)}
@@ -1258,25 +1258,25 @@ function LeadDetailOverlay({
                           className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center justify-between border-b last:border-0">
                           <span>{v.make.name} {v.model.name} {v.year}</span>
                           {(v.discountPrice || v.price) && (
-                            <span className="text-xs text-muted-foreground">{(v.discountPrice || v.price)!.toLocaleString("ro-RO")} {v.currency}</span>
+                            <span className="text-sm text-gray-500">{(v.discountPrice || v.price)!.toLocaleString("ro-RO")} {v.currency}</span>
                           )}
                         </button>
                       ))}
                     </div>
                   )}
                   <button onClick={() => { setEditingVehicle(false); setVSearch(""); setVResults([]); }}
-                    className="text-xs text-muted-foreground hover:underline">Anulează</button>
+                    className="text-sm text-gray-500 hover:underline">Anulează</button>
                 </div>
               )}
 
               {!lead.vehicle && !editingVehicle && (
-                <p className="text-xs text-muted-foreground italic">Nicio mașină selectată.</p>
+                <p className="text-sm text-gray-500 italic">Nicio mașină selectată.</p>
               )}
             </div>
 
             {/* Test Drive section */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Test Drive</h3>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Test Drive</h3>
 
               {/* Existing test drives (hide cancelled/no-show) */}
               {lead.testDrives && lead.testDrives.filter((td) => !["CANCELLED", "NO_SHOW"].includes(td.status)).length > 0 ? (
@@ -1305,7 +1305,7 @@ function LeadDetailOverlay({
                             <span className="text-sm font-medium text-gray-900 truncate">
                               {td.vehicle ? (td.vehicle.title || `${td.vehicle.make.name} ${td.vehicle.model.name}`) : "—"}
                             </span>
-                            <span className="text-xs text-gray-500 shrink-0">
+                            <span className="text-sm text-gray-500 shrink-0">
                               {new Date(td.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "short" })} · {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                             </span>
                           </div>
@@ -1314,7 +1314,7 @@ function LeadDetailOverlay({
                               {td.status === "SCHEDULED" && (
                                 <button
                                   onClick={() => { setTdConfirmingId(td.id); setTdConfirmAgent(""); }}
-                                  className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs flex items-center gap-1"
+                                  className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm flex items-center gap-1"
                                   title="Confirmă"
                                 >
                                   <Check className="h-3 w-3" /> Confirmă
@@ -1329,7 +1329,7 @@ function LeadDetailOverlay({
                                   setTdSlots([]);
                                   setTdCalendarMonth(new Date());
                                 }}
-                                className="rounded-md bg-gray-800 hover:bg-gray-900 text-white p-1 text-xs"
+                                className="rounded-md bg-gray-800 hover:bg-gray-900 text-white p-1 text-sm"
                                 title="Modifică data"
                               >
                                 <Calendar className="h-3 w-3" />
@@ -1346,7 +1346,7 @@ function LeadDetailOverlay({
                                     onLeadUpdated?.();
                                   }
                                 }}
-                                className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 text-xs"
+                                className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 text-sm"
                                 title="Anulează"
                               >
                                 <X className="h-3 w-3" />
@@ -1357,7 +1357,7 @@ function LeadDetailOverlay({
                         {/* Confirm with agent */}
                         {tdConfirmingId === td.id && (
                           <div className="mt-2 rounded-lg border bg-green-50 p-3 space-y-2">
-                            <p className="text-xs font-medium text-green-800">Alege agentul responsabil:</p>
+                            <p className="text-sm font-medium text-green-800">Alege agentul responsabil:</p>
                             <select
                               value={tdConfirmAgent}
                               onChange={(e) => setTdConfirmAgent(e.target.value)}
@@ -1381,13 +1381,13 @@ function LeadDetailOverlay({
                                   await fetchLead();
                                   onLeadUpdated?.();
                                 }}
-                                className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+                                className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                               >
                                 Confirmă
                               </button>
                               <button
                                 onClick={() => setTdConfirmingId(null)}
-                                className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                                className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
                               >
                                 Anulează
                               </button>
@@ -1416,16 +1416,16 @@ function LeadDetailOverlay({
                           const so = fd === 0 ? 6 : fd - 1;
                           return (
                             <div className="mt-2 rounded-lg border bg-gray-50 p-3 space-y-3">
-                              <p className="text-xs font-medium text-gray-700">Modifică data și ora:</p>
+                              <p className="text-sm font-medium text-gray-700">Modifică data și ora:</p>
                               {/* Calendar */}
                               <div>
                                 <div className="flex items-center justify-between mb-2">
                                   <button onClick={() => setTdCalendarMonth(new Date(y2, m2 - 1, 1))} className="p-1 rounded hover:bg-muted text-sm">&larr;</button>
-                                  <span className="text-xs font-medium capitalize">{tdCalendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}</span>
+                                  <span className="text-sm font-medium capitalize">{tdCalendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}</span>
                                   <button onClick={() => setTdCalendarMonth(new Date(y2, m2 + 1, 1))} className="p-1 rounded hover:bg-muted text-sm">&rarr;</button>
                                 </div>
-                                <div className="grid grid-cols-7 gap-1 text-center text-xs">
-                                  {["Lu","Ma","Mi","Jo","Vi","Sâ","Du"].map((d) => <span key={d} className="text-muted-foreground font-medium py-0.5">{d}</span>)}
+                                <div className="grid grid-cols-7 gap-1 text-center text-sm">
+                                  {["Lu","Ma","Mi","Jo","Vi","Sâ","Du"].map((d) => <span key={d} className="text-gray-500 font-medium py-0.5">{d}</span>)}
                                   {Array.from({ length: so }).map((_, i) => <span key={`e-${i}`} />)}
                                   {Array.from({ length: dim }).map((_, i) => {
                                     const day = i + 1;
@@ -1436,7 +1436,7 @@ function LeadDetailOverlay({
                                     return (
                                       <button key={day} disabled={isPast || isFar}
                                         onClick={() => { setTdSelectedDate(dd); fetchRescheduleSlots(dd); }}
-                                        className={`py-1 rounded text-xs ${isSel ? "bg-gray-900 text-white" : isPast || isFar ? "text-gray-300" : "hover:bg-muted"}`}
+                                        className={`py-1 rounded text-sm ${isSel ? "bg-gray-900 text-white" : isPast || isFar ? "text-gray-300" : "hover:bg-muted"}`}
                                       >{day}</button>
                                     );
                                   })}
@@ -1445,13 +1445,13 @@ function LeadDetailOverlay({
                               {/* Slots */}
                               {tdSelectedDate && (
                                 <div>
-                                  <p className="text-xs text-muted-foreground mb-1">Ore disponibile — {tdSelectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}</p>
-                                  {tdLoadingSlots ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" /> :
-                                    tdSlots.length === 0 ? <p className="text-xs text-red-500 italic">Niciun slot disponibil.</p> : (
+                                  <p className="text-sm text-gray-500 mb-1">Ore disponibile — {tdSelectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}</p>
+                                  {tdLoadingSlots ? <Loader2 className="h-4 w-4 animate-spin text-gray-500 mx-auto" /> :
+                                    tdSlots.length === 0 ? <p className="text-sm text-red-500 italic">Niciun slot disponibil.</p> : (
                                       <div className="grid grid-cols-4 gap-1">
                                         {tdSlots.map((s) => (
                                           <button key={s} onClick={() => setTdSelectedTime(s)}
-                                            className={`py-1 rounded text-xs ${tdSelectedTime === s ? "bg-gray-900 text-white" : "border hover:bg-muted"}`}
+                                            className={`py-1 rounded text-sm ${tdSelectedTime === s ? "bg-gray-900 text-white" : "border hover:bg-muted"}`}
                                           >{s}</button>
                                         ))}
                                       </div>
@@ -1470,12 +1470,12 @@ function LeadDetailOverlay({
                                     setTdReschedulingId(null);
                                     await fetchLead();
                                     onLeadUpdated?.();
-                                  }} className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-xs font-medium">
+                                  }} className="rounded-md bg-green-600 hover:bg-green-700 text-white px-3 py-1 text-sm font-medium">
                                     Salvează
                                   </button>
                                 )}
                                 <button onClick={() => { setTdReschedulingId(null); setTdSelectedDate(null); setTdSelectedTime(null); setTdSlots([]); }}
-                                  className="rounded-md border px-3 py-1 text-xs hover:bg-muted">Anulează</button>
+                                  className="rounded-md border px-3 py-1 text-sm hover:bg-muted">Anulează</button>
                               </div>
                             </div>
                           );
@@ -1485,7 +1485,7 @@ function LeadDetailOverlay({
                   })}
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground italic">Niciun test drive programat.</p>
+                <p className="text-sm text-gray-500 italic">Niciun test drive programat.</p>
               )}
 
               {/* Schedule new test drive */}
@@ -1587,7 +1587,7 @@ function LeadDetailOverlay({
                         {/* Step 1: Choose vehicle if multiple */}
                         {allVehicles.length > 1 && (
                           <div>
-                            <label className="text-xs text-muted-foreground mb-1 block">Alege mașina</label>
+                            <label className="text-sm text-gray-500 mb-1 block">Alege mașina</label>
                             <div className="space-y-1">
                               {allVehicles.map((v) => (
                                 <button
@@ -1612,9 +1612,9 @@ function LeadDetailOverlay({
                               </span>
                               <button onClick={() => setTdCalendarMonth(new Date(year, month + 1, 1))} className="p-1 rounded hover:bg-muted">&rarr;</button>
                             </div>
-                            <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                            <div className="grid grid-cols-7 gap-1 text-center text-sm">
                               {["Lu", "Ma", "Mi", "Jo", "Vi", "Sâ", "Du"].map((d) => (
-                                <span key={d} className="text-muted-foreground font-medium py-1">{d}</span>
+                                <span key={d} className="text-gray-500 font-medium py-1">{d}</span>
                               ))}
                               {Array.from({ length: startOffset }).map((_, i) => <span key={`e-${i}`} />)}
                               {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -1643,13 +1643,13 @@ function LeadDetailOverlay({
                         {/* Step 3: Time slots */}
                         {tdSelectedDate && (
                           <div>
-                            <p className="text-xs text-muted-foreground mb-2">
+                            <p className="text-sm text-gray-500 mb-2">
                               Ore disponibile — {tdSelectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}
                             </p>
                             {tdLoadingSlots ? (
-                              <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                              <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-gray-500" /></div>
                             ) : tdSlots.length === 0 ? (
-                              <p className="text-xs text-red-500 italic">Niciun slot disponibil în această zi.</p>
+                              <p className="text-sm text-red-500 italic">Niciun slot disponibil în această zi.</p>
                             ) : (
                               <div className="grid grid-cols-4 gap-1.5">
                                 {tdSlots.map((slot) => (
@@ -1672,14 +1672,14 @@ function LeadDetailOverlay({
                             <button
                               onClick={handleSave}
                               disabled={tdSaving}
-                              className="rounded-md bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 text-xs font-medium disabled:opacity-50"
+                              className="rounded-md bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 text-sm font-medium disabled:opacity-50"
                             >
                               {tdSaving ? "..." : "Confirmă programarea"}
                             </button>
                           )}
                           <button
                             onClick={() => { setTdScheduling(false); setTdSelectedVehicle(null); setTdSelectedDate(null); setTdSelectedTime(null); setTdSlots([]); }}
-                            className="rounded-md border px-3 py-1.5 text-xs hover:bg-muted"
+                            className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
                           >
                             Anulează
                           </button>
@@ -1693,30 +1693,30 @@ function LeadDetailOverlay({
 
             {/* Lead info */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Lead</h3>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Lead</h3>
               <div className="rounded-lg border p-3 space-y-2">
                 {/* Row 1: Status / Brand / Tip / Sursa / Creat */}
                 <div className="flex items-center gap-4 text-sm">
-                  <div><span className="text-muted-foreground text-xs">Status</span> <span className="block font-medium text-gray-900">{STATUS_LABELS[lead.status]}</span></div>
-                  <div><span className="text-muted-foreground text-xs">Brand</span> <span className="block font-medium text-gray-900">{BRAND_SHORT_LABELS[lead.brand] || lead.brand}</span></div>
-                  <div><span className="text-muted-foreground text-xs">Tip</span> <span className="block font-medium text-gray-900">{LEAD_TYPE_CONFIG[lead.type]?.label || lead.type}</span></div>
-                  <div><span className="text-muted-foreground text-xs">Sursa</span> <span className="block font-medium text-gray-900">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
-                  <div><span className="text-muted-foreground text-xs">Creat</span> <span className="block font-medium text-gray-900">{formatDate(lead.createdAt)}</span></div>
+                  <div><span className="text-gray-500 text-sm">Status</span> <span className="block font-medium text-gray-900">{STATUS_LABELS[lead.status]}</span></div>
+                  <div><span className="text-gray-500 text-sm">Brand</span> <span className="block font-medium text-gray-900">{BRAND_SHORT_LABELS[lead.brand] || lead.brand}</span></div>
+                  <div><span className="text-gray-500 text-sm">Tip</span> <span className="block font-medium text-gray-900">{LEAD_TYPE_CONFIG[lead.type]?.label || lead.type}</span></div>
+                  <div><span className="text-gray-500 text-sm">Sursa</span> <span className="block font-medium text-gray-900">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
+                  <div><span className="text-gray-500 text-sm">Creat</span> <span className="block font-medium text-gray-900">{formatDate(lead.createdAt)}</span></div>
                 </div>
 
                 {/* Row 2: Pipeline */}
                 <div className="flex items-center gap-2 pt-2 border-t">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">Pipeline:</span>
+                  <span className="text-sm text-gray-500 whitespace-nowrap">Pipeline:</span>
                   {lead.deals.length > 0 ? (
                     <div className="flex items-center gap-2 flex-1">
                       <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: lead.deals[0].stage.color }} />
                       <span className="text-sm font-medium text-gray-900">{lead.deals[0].stage.name}</span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-sm text-gray-500">
                         {lead.deals[0].value ? formatCurrency(lead.deals[0].value, lead.deals[0].currency) : ""} {lead.deals[0].probability ? `· ${lead.deals[0].probability}%` : ""}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-sm text-muted-foreground">Nu este în pipeline</span>
+                    <span className="text-sm text-gray-500">Nu este în pipeline</span>
                   )}
                   <MoveDropdown
                     leadId={leadId}
@@ -1729,7 +1729,7 @@ function LeadDetailOverlay({
 
                 {/* Row 3: Agent */}
                 <div className="flex items-center gap-2 pt-2 border-t">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap">Agent:</span>
+                  <span className="text-sm text-gray-500 whitespace-nowrap">Agent:</span>
                   <select
                     value={lead.assignedTo?.id || ""}
                     onChange={(e) => assignAgent(e.target.value || null)}
@@ -1747,17 +1747,17 @@ function LeadDetailOverlay({
                 {/* Row 4: Follow-up */}
                 <div className="pt-2 border-t">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground whitespace-nowrap">Follow-up:</span>
+                    <span className="text-sm text-gray-500 whitespace-nowrap">Follow-up:</span>
                     {lead.followUpAt ? (
                       <div className="flex items-center gap-2 flex-1">
                         <Bell className="h-3.5 w-3.5 text-amber-500" />
                         <span className="text-sm font-medium text-gray-900">{formatDate(lead.followUpAt)}</span>
-                        {lead.followUpNote && <span className="text-xs text-muted-foreground truncate">— {lead.followUpNote}</span>}
+                        {lead.followUpNote && <span className="text-sm text-gray-500 truncate">— {lead.followUpNote}</span>}
                       </div>
                     ) : (
-                      <span className="text-sm text-muted-foreground flex-1">Nesetat</span>
+                      <span className="text-sm text-gray-500 flex-1">Nesetat</span>
                     )}
-                    <button onClick={() => setShowFollowUp(!showFollowUp)} className="text-xs text-gray-700 hover:text-gray-900 border rounded-md px-2 py-1 flex items-center gap-1">
+                    <button onClick={() => setShowFollowUp(!showFollowUp)} className="text-sm text-gray-700 hover:text-gray-900 border rounded-md px-2 py-1 flex items-center gap-1">
                       <Bell className="h-3 w-3" /> {lead.followUpAt ? "Modifică" : "Programează"}
                     </button>
                   </div>
@@ -1778,11 +1778,11 @@ function LeadDetailOverlay({
                         rows={2}
                       />
                       <div className="flex justify-end gap-2">
-                        <button onClick={() => setShowFollowUp(false)} className="px-3 py-1 text-xs rounded-md border hover:bg-muted">Anulează</button>
+                        <button onClick={() => setShowFollowUp(false)} className="px-3 py-1 text-sm rounded-md border hover:bg-muted">Anulează</button>
                         <button
                           onClick={saveFollowUp}
                           disabled={!followUpDate || !followUpNote.trim() || savingFollowUp}
-                          className="px-3 py-1 text-xs rounded-md bg-gray-900 text-white disabled:opacity-50 flex items-center gap-1"
+                          className="px-3 py-1 text-sm rounded-md bg-gray-900 text-white disabled:opacity-50 flex items-center gap-1"
                         >
                           {savingFollowUp ? <Loader2 className="h-3 w-3 animate-spin" /> : <Bell className="h-3 w-3" />}
                           Salvează
@@ -1795,7 +1795,7 @@ function LeadDetailOverlay({
                 {/* Row 5: Note admin */}
                 <div className="pt-2 border-t">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm text-muted-foreground">Note admin:</span>
+                    <span className="text-sm text-gray-500">Note admin:</span>
                   </div>
                   <textarea
                     value={adminNote}
@@ -1808,14 +1808,14 @@ function LeadDetailOverlay({
                     <div className="flex justify-end gap-2 mt-1">
                       <button
                         onClick={() => setAdminNote(lead.adminNotes || "")}
-                        className="px-3 py-1 text-xs rounded-md border hover:bg-muted"
+                        className="px-3 py-1 text-sm rounded-md border hover:bg-muted"
                       >
                         Anulează
                       </button>
                       <button
                         onClick={saveAdminNote}
                         disabled={savingAdminNote}
-                        className="px-3 py-1 text-xs rounded-md bg-gray-900 text-white disabled:opacity-50"
+                        className="px-3 py-1 text-sm rounded-md bg-gray-900 text-white disabled:opacity-50"
                       >
                         {savingAdminNote ? "..." : "Salvează"}
                       </button>
@@ -1827,7 +1827,7 @@ function LeadDetailOverlay({
 
             {/* Activity Timeline */}
             <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Activitate</h3>
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Activitate</h3>
               <div className="flex gap-2">
                 <input
                   value={comment}
@@ -1844,7 +1844,7 @@ function LeadDetailOverlay({
 
               <div className="space-y-0 mt-2">
                 {lead.activities.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">Nicio activitate încă.</p>
+                  <p className="text-sm text-gray-500 text-center py-4">Nicio activitate încă.</p>
                 ) : lead.activities.map((activity, idx) => {
                   const isStageChange = activity.type === "STAGE_CHANGE";
                   const isCreated = activity.type === "CREATED";
@@ -1855,18 +1855,18 @@ function LeadDetailOverlay({
                   return (
                     <div key={activity.id} className="flex gap-3 relative pb-4">
                       {idx < lead.activities.length - 1 && <div className="absolute left-[11px] top-6 bottom-0 w-px bg-border" />}
-                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isCreated ? "bg-emerald-100 text-emerald-600" : isStageChange ? "bg-violet-100 text-violet-600" : "bg-muted text-muted-foreground"}`}>
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isCreated ? "bg-emerald-100 text-emerald-600" : isStageChange ? "bg-violet-100 text-violet-600" : "bg-muted text-gray-500"}`}>
                         <Icon className="h-3 w-3" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-xs font-medium">{activity.user ? `${activity.user.firstName} ${activity.user.lastName}` : "Sistem"}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">{formatDate(activity.createdAt)}</span>
+                          <span className="text-sm font-medium">{activity.user ? `${activity.user.firstName} ${activity.user.lastName}` : "Sistem"}</span>
+                          <span className="text-sm text-gray-500 shrink-0">{formatDate(activity.createdAt)}</span>
                         </div>
-                        <p className={`text-xs mt-0.5 ${isStageChange ? "text-violet-700 font-medium" : ""}`}>
+                        <p className={`text-sm mt-0.5 ${isStageChange ? "text-violet-700 font-medium" : ""}`}>
                           {isStageChange && "→ "}{activity.content}
                         </p>
-                        <span className="text-xs text-muted-foreground">{ACTIVITY_LABELS[activity.type] || activity.type}</span>
+                        <span className="text-sm text-gray-500">{ACTIVITY_LABELS[activity.type] || activity.type}</span>
                       </div>
                     </div>
                   );
@@ -2034,7 +2034,7 @@ function NewLeadForm({
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative h-full w-full max-w-lg overflow-y-auto bg-white shadow-xl animate-in slide-in-from-right">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4">
-          <h2 className="text-lg font-semibold">Lead Nou</h2>
+          <h2 className="text-base font-semibold">Lead Nou</h2>
           <button onClick={onClose} className="rounded-md p-1 hover:bg-muted"><X className="h-5 w-5" /></button>
         </div>
 
@@ -2045,9 +2045,9 @@ function NewLeadForm({
 
           {/* Phone — primary field, triggers customer search */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Telefon *</label>
+            <label className="text-sm font-medium text-gray-500">Telefon *</label>
             <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
               <input
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
@@ -2062,12 +2062,12 @@ function NewLeadForm({
             {/* Customer suggestions */}
             {!selectedCustomer && showCustomerResults && customerResults.length > 0 && (
               <div className="rounded-md border bg-blue-50 border-blue-200 p-1 mt-1">
-                <p className="text-xs font-medium text-blue-700 px-2 py-1">Client existent găsit:</p>
+                <p className="text-sm font-medium text-blue-700 px-2 py-1">Client existent găsit:</p>
                 {customerResults.map((c) => (
                   <button key={c.id} type="button" onClick={() => selectCustomer(c)}
                     className="w-full px-2 py-1.5 text-left text-sm hover:bg-blue-100 rounded flex items-center justify-between">
                     <span className="font-medium">{c.firstName} {c.lastName}</span>
-                    <span className="text-xs text-muted-foreground">{c.email || ""}</span>
+                    <span className="text-sm text-gray-500">{c.email || ""}</span>
                   </button>
                 ))}
               </div>
@@ -2075,7 +2075,7 @@ function NewLeadForm({
 
             {/* No customer found hint */}
             {!selectedCustomer && customerSearchDone && customerResults.length === 0 && form.phone.length >= 4 && (
-              <p className="text-xs text-muted-foreground mt-1">Client nou — completează datele de mai jos.</p>
+              <p className="text-sm text-gray-500 mt-1">Client nou — completează datele de mai jos.</p>
             )}
           </div>
 
@@ -2086,10 +2086,10 @@ function NewLeadForm({
                 <User className="h-4 w-4 text-emerald-600" />
                 <div>
                   <span className="text-sm font-medium">{selectedCustomer.firstName} {selectedCustomer.lastName}</span>
-                  {selectedCustomer.email && <span className="text-xs text-muted-foreground ml-2">{selectedCustomer.email}</span>}
+                  {selectedCustomer.email && <span className="text-sm text-gray-500 ml-2">{selectedCustomer.email}</span>}
                 </div>
               </div>
-              <button type="button" onClick={clearCustomer} className="text-xs text-red-600 hover:underline">Schimbă</button>
+              <button type="button" onClick={clearCustomer} className="text-sm text-red-600 hover:underline">Schimbă</button>
             </div>
           )}
 
@@ -2098,18 +2098,18 @@ function NewLeadForm({
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Prenume *</label>
+                  <label className="text-sm font-medium text-gray-500">Prenume *</label>
                   <input value={form.firstName} onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
                     className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Ion" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Nume *</label>
+                  <label className="text-sm font-medium text-gray-500">Nume *</label>
                   <input value={form.lastName} onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
                     className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Popescu" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Email</label>
+                <label className="text-sm font-medium text-gray-500">Email</label>
                 <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                   className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="email@exemplu.ro" />
               </div>
@@ -2119,7 +2119,7 @@ function NewLeadForm({
           {/* Brand + Source */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Brand *</label>
+              <label className="text-sm font-medium text-gray-500">Brand *</label>
               <select
                 value={form.brand}
                 onChange={(e) => { setForm((f) => ({ ...f, brand: e.target.value, vehicleId: "" })); setSelectedVehicle(null); }}
@@ -2129,7 +2129,7 @@ function NewLeadForm({
               </select>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Sursa *</label>
+              <label className="text-sm font-medium text-gray-500">Sursa *</label>
               <select value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
                 className="w-full rounded-md border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ring">
                 {MANUAL_SOURCES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -2139,25 +2139,25 @@ function NewLeadForm({
 
           {/* Vehicle search */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Interesat de</label>
+            <label className="text-sm font-medium text-gray-500">Interesat de</label>
             {selectedVehicle ? (
               <div className="flex items-center justify-between rounded-md border p-2 bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <Car className="h-4 w-4 text-muted-foreground" />
+                  <Car className="h-4 w-4 text-gray-500" />
                   <span className="text-sm font-medium">
                     {selectedVehicle.make.name} {selectedVehicle.model.name} {selectedVehicle.year}
                   </span>
                   {(selectedVehicle.discountPrice || selectedVehicle.price) && (
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-sm text-gray-500">
                       {(selectedVehicle.discountPrice || selectedVehicle.price)!.toLocaleString("ro-RO")} {selectedVehicle.currency}
                     </span>
                   )}
                 </div>
-                <button type="button" onClick={() => { setSelectedVehicle(null); setForm((f) => ({ ...f, vehicleId: "" })); }} className="text-xs text-red-600 hover:underline">Schimbă</button>
+                <button type="button" onClick={() => { setSelectedVehicle(null); setForm((f) => ({ ...f, vehicleId: "" })); }} className="text-sm text-red-600 hover:underline">Schimbă</button>
               </div>
             ) : (
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500" />
                 <input
                   value={vehicleSearch}
                   onChange={(e) => setVehicleSearch(e.target.value)}
@@ -2175,7 +2175,7 @@ function NewLeadForm({
                           className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center justify-between">
                           <span>{v.make.name} {v.model.name} {v.year}</span>
                           {displayPrice ? (
-                            <span className="text-xs font-medium text-muted-foreground">{displayPrice.toLocaleString("ro-RO")} {v.currency}</span>
+                            <span className="text-sm font-medium text-gray-500">{displayPrice.toLocaleString("ro-RO")} {v.currency}</span>
                           ) : null}
                         </button>
                       );
@@ -2188,7 +2188,7 @@ function NewLeadForm({
 
           {/* Agent */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Agent asignat</label>
+            <label className="text-sm font-medium text-gray-500">Agent asignat</label>
             <select value={form.assignedToId} onChange={(e) => setForm((f) => ({ ...f, assignedToId: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ring">
               <option value="">Eu</option>
@@ -2198,7 +2198,7 @@ function NewLeadForm({
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">Note</label>
+            <label className="text-sm font-medium text-gray-500">Note</label>
             <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" rows={3}
               placeholder="Detalii despre conversație, ce mașină dorește, buget..." />
@@ -2206,7 +2206,7 @@ function NewLeadForm({
 
           {/* Options */}
           <div className="space-y-3 rounded-lg border p-3">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Opțiuni</h4>
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Opțiuni</h4>
 
             {/* Test Drive */}
             <label className="flex items-center gap-2 cursor-pointer">
@@ -2223,7 +2223,7 @@ function NewLeadForm({
                   onChange={(e) => setForm((f) => ({ ...f, testDriveDate: e.target.value }))}
                   min={new Date().toISOString().slice(0, 16)}
                   className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                {!form.vehicleId && <p className="text-xs text-amber-600">⚠ Selectează o mașină pentru test drive.</p>}
+                {!form.vehicleId && <p className="text-sm text-amber-600">⚠ Selectează o mașină pentru test drive.</p>}
               </div>
             )}
 
@@ -2236,7 +2236,7 @@ function NewLeadForm({
               <span className="text-sm">Trimite broșură pe email</span>
             </label>
             {form.sendBrochure && !form.email && !selectedCustomer?.email && (
-              <p className="ml-6 text-xs text-amber-600">⚠ Adaugă adresa de email.</p>
+              <p className="ml-6 text-sm text-amber-600">⚠ Adaugă adresa de email.</p>
             )}
           </div>
 
@@ -2456,8 +2456,8 @@ export default function SalesClient({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Vânzări</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="font-heading text-base font-bold tracking-tight">Vânzări</h1>
+          <p className="text-sm text-gray-500">
             {leads.length} lead-uri &middot; {visibleStages.reduce((sum, s) => sum + s.deals.length, 0)} dealuri &middot; Valoare: {formatCurrency(totalValue)}
           </p>
         </div>
@@ -2475,19 +2475,19 @@ export default function SalesClient({
       <div className="flex border-b">
         <button
           onClick={() => setActiveTab("leads")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === "leads" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === "leads" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-foreground"}`}
         >
           <AlertCircle className="h-4 w-4" />
           Lead-uri Noi
-          {newLeads.length > 0 && <Badge variant={activeTab === "leads" ? "default" : "secondary"} className="text-xs">{newLeads.length}</Badge>}
+          {newLeads.length > 0 && <Badge variant={activeTab === "leads" ? "default" : "secondary"} className="text-sm">{newLeads.length}</Badge>}
         </button>
         <button
           onClick={() => setActiveTab("pipeline")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === "pipeline" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === "pipeline" ? "border-primary text-primary" : "border-transparent text-gray-500 hover:text-foreground"}`}
         >
           <ArrowRight className="h-4 w-4" />
           Pipeline
-          <Badge variant={activeTab === "pipeline" ? "default" : "secondary"} className="text-xs">
+          <Badge variant={activeTab === "pipeline" ? "default" : "secondary"} className="text-sm">
             {visibleStages.reduce((sum, s) => sum + s.deals.length, 0)}
           </Badge>
         </button>
@@ -2499,7 +2499,7 @@ export default function SalesClient({
           {/* Search + Filters */}
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -2538,7 +2538,7 @@ export default function SalesClient({
                 {agents.map((a) => <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>)}
               </select>
               {(filterSource || filterType || filterAgent) && (
-                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
+                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-sm text-red-600 hover:underline">Resetează</button>
               )}
             </div>
           )}
@@ -2559,10 +2559,10 @@ export default function SalesClient({
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <AlertCircle className="h-8 w-8 mb-2 opacity-30" />
               <p className="text-sm">Niciun lead nou.</p>
-              <p className="text-xs mt-1">Lead-urile noi din website sau adăugate manual apar aici.</p>
+              <p className="text-sm mt-1">Lead-urile noi din website sau adăugate manual apar aici.</p>
             </div>
           )}
         </div>
@@ -2574,7 +2574,7 @@ export default function SalesClient({
           {/* Search for pipeline */}
           <div className="flex flex-wrap gap-2 items-center">
             <div className="relative flex-1 min-w-[200px] max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -2607,7 +2607,7 @@ export default function SalesClient({
                 {agents.map((a) => <option key={a.id} value={a.id}>{a.firstName} {a.lastName}</option>)}
               </select>
               {(filterSource || filterType || filterAgent) && (
-                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-xs text-red-600 hover:underline">Resetează</button>
+                <button onClick={() => { setFilterSource(""); setFilterType(""); setFilterAgent(""); }} className="text-sm text-red-600 hover:underline">Resetează</button>
               )}
             </div>
           )}
@@ -2629,14 +2629,14 @@ export default function SalesClient({
                       <h3 className="text-sm font-semibold">{stage.name}</h3>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {stageValue > 0 && <span className="text-xs text-muted-foreground">{formatCurrency(stageValue)}</span>}
-                      <Badge variant="secondary" className="text-xs">{stage.deals.length}</Badge>
+                      {stageValue > 0 && <span className="text-sm text-gray-500">{formatCurrency(stageValue)}</span>}
+                      <Badge variant="secondary" className="text-sm">{stage.deals.length}</Badge>
                     </div>
                   </div>
 
                   <div className="flex flex-1 flex-col gap-2 p-2">
                     {stage.deals.length === 0 ? (
-                      <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-xs text-muted-foreground">
+                      <div className="flex items-center justify-center rounded-md border border-dashed p-4 text-sm text-gray-500">
                         Niciun deal
                       </div>
                     ) : (

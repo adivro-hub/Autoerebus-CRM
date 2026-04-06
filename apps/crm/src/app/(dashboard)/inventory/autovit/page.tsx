@@ -121,8 +121,8 @@ export default function AutovitPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Export Autovit</h2>
-          <p className="text-xs text-muted-foreground">
+          <h2 className="text-base font-semibold">Export Autovit</h2>
+          <p className="text-sm text-gray-500">
             Publică și gestionează anunțuri pe Autovit.ro
           </p>
         </div>
@@ -149,15 +149,15 @@ export default function AutovitPage() {
           {results.map((r) => (
             <div
               key={r.vehicleId}
-              className={`flex items-center gap-2 text-xs ${r.success ? "text-green-700" : "text-red-600"}`}
+              className={`flex items-center gap-2 text-sm ${r.success ? "text-green-700" : "text-red-600"}`}
             >
               <span>{r.success ? "✓" : "✗"}</span>
               <span>{r.title}</span>
-              {r.autovitId && <span className="text-muted-foreground">ID: {r.autovitId}</span>}
+              {r.autovitId && <span className="text-gray-500">ID: {r.autovitId}</span>}
               {r.error && <span className="text-red-500">{r.error}</span>}
             </div>
           ))}
-          <button onClick={() => setResults(null)} className="text-xs text-blue-600 hover:underline mt-1">
+          <button onClick={() => setResults(null)} className="text-sm text-blue-600 hover:underline mt-1">
             Închide
           </button>
         </div>
@@ -165,7 +165,7 @@ export default function AutovitPage() {
 
       {/* Stats + Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex gap-1 text-xs">
+        <div className="flex gap-1 text-sm">
           <button
             onClick={() => setFilter("all")}
             className={`px-3 py-1.5 rounded-md ${filter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 hover:bg-gray-200"}`}
@@ -191,13 +191,13 @@ export default function AutovitPage() {
           placeholder="Caută..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="ml-auto h-8 w-48 rounded-md border px-2 text-xs"
+          className="ml-auto h-8 w-48 rounded-md border px-2 text-sm"
         />
       </div>
 
       {/* Actions */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-2 rounded-lg border bg-blue-50 p-2 text-xs">
+        <div className="flex items-center gap-2 rounded-lg border bg-blue-50 p-2 text-sm">
           <span className="font-medium">{selected.size} selectate</span>
           <button
             onClick={() => performAction("publish")}
@@ -227,7 +227,7 @@ export default function AutovitPage() {
           >
             Șterge de pe Autovit
           </button>
-          <button onClick={() => setSelected(new Set())} className="ml-auto text-muted-foreground hover:text-gray-700">
+          <button onClick={() => setSelected(new Set())} className="ml-auto text-gray-500 hover:text-gray-700">
             Deselectează
           </button>
         </div>
@@ -235,7 +235,7 @@ export default function AutovitPage() {
 
       {/* Table */}
       <div className="rounded-lg border">
-        <table className="w-full text-xs">
+        <table className="w-full text-sm">
           <thead className="border-b bg-gray-50">
             <tr>
               <th className="p-2 text-left w-8">
@@ -259,13 +259,13 @@ export default function AutovitPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                <td colSpan={9} className="p-8 text-center text-gray-500">
                   Se încarcă...
                 </td>
               </tr>
             ) : vehicles.length === 0 ? (
               <tr>
-                <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                <td colSpan={9} className="p-8 text-center text-gray-500">
                   Niciun vehicul găsit
                 </td>
               </tr>
@@ -292,7 +292,7 @@ export default function AutovitPage() {
                         className="h-10 w-14 rounded object-cover"
                       />
                     ) : (
-                      <div className="h-10 w-14 rounded bg-gray-200 flex items-center justify-center text-[10px] text-gray-400">
+                      <div className="h-10 w-14 rounded bg-gray-200 flex items-center justify-center text-sm text-gray-400">
                         No img
                       </div>
                     )}
@@ -302,7 +302,7 @@ export default function AutovitPage() {
                       {v.title || `${v.make.name} ${v.model.name}`}
                     </div>
                     {v.vin && (
-                      <div className="text-[10px] text-muted-foreground">VIN: {v.vin}</div>
+                      <div className="text-sm text-gray-500">VIN: {v.vin}</div>
                     )}
                   </td>
                   <td className="p-2">{v.year}</td>
@@ -313,43 +313,43 @@ export default function AutovitPage() {
                           {v.discountPrice.toLocaleString()} €
                         </span>
                         <br />
-                        <span className="text-[10px] text-muted-foreground line-through">
+                        <span className="text-sm text-gray-500 line-through">
                           {v.price?.toLocaleString()} €
                         </span>
                       </>
                     ) : v.price ? (
                       `${v.price.toLocaleString()} €`
                     ) : (
-                      <span className="text-muted-foreground">-</span>
+                      <span className="text-gray-500">-</span>
                     )}
                   </td>
                   <td className="p-2">
                     {v.mileage ? `${v.mileage.toLocaleString()} km` : "-"}
                   </td>
                   <td className="p-2">
-                    <span className="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px]">
+                    <span className="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-sm">
                       {v.brand}
                     </span>
                   </td>
                   <td className="p-2">
                     {v.autovitId ? (
                       <div>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] text-green-700">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-700">
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
                           Publicat
                         </span>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">
+                        <div className="text-sm text-gray-500 mt-0.5">
                           ID: {v.autovitId}
                         </div>
                       </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-500">
                         <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />
                         Nepublicat
                       </span>
                     )}
                   </td>
-                  <td className="p-2 text-[10px] text-muted-foreground">
+                  <td className="p-2 text-sm text-gray-500">
                     {v.autovitSyncedAt
                       ? new Date(v.autovitSyncedAt).toLocaleString("ro-RO", {
                           day: "2-digit",

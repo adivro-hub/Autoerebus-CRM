@@ -112,19 +112,19 @@ export function InventoryFilters() {
       </select>
 
       <div className="relative">
-        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-500" />
         <input
           type="text"
           placeholder="Cauta dupa VIN, marca, model..."
           value={searchValue}
           onChange={(e) => setSearchValue(e.target.value)}
-          className={`h-9 w-64 rounded-md border bg-background pl-8 pr-8 text-sm placeholder:text-muted-foreground ${searchValue ? activeClass : "border-input"}`}
+          className={`h-9 w-64 rounded-md border bg-background pl-8 pr-8 text-sm placeholder:text-gray-500 ${searchValue ? activeClass : "border-input"}`}
         />
         {searchValue && (
           <button
             type="button"
             onClick={() => setSearchValue("")}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-foreground"
           >
             <X className="h-3.5 w-3.5" />
           </button>

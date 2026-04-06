@@ -173,10 +173,10 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       {/* Welcome */}
       <div>
-        <h1 className="font-heading text-2xl font-bold tracking-tight">
+        <h1 className="font-heading text-base font-bold tracking-tight">
           Buna ziua, {firstName}!
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-500">
           {brand
             ? `Vizualizare: ${brand}`
             : "Iata un sumar al activitatii tale de azi."}
@@ -191,9 +191,9 @@ export default async function DashboardPage({ searchParams }: PageProps) {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                    <p className="text-xs text-muted-foreground">{stat.change}</p>
+                    <p className="text-sm text-gray-500">{stat.title}</p>
+                    <p className="text-base font-bold">{stat.value}</p>
+                    <p className="text-sm text-gray-500">{stat.change}</p>
                   </div>
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-lg ${stat.color}`}
@@ -232,7 +232,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   className={`flex flex-col items-center gap-1.5 rounded-lg p-3 text-white transition-colors ${action.color}`}
                 >
                   <action.icon className="h-5 w-5" />
-                  <span className="text-xs font-medium">{action.label}</span>
+                  <span className="text-sm font-medium">{action.label}</span>
                 </a>
               ))}
             </div>
@@ -248,7 +248,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         <CardContent>
           <div className="space-y-3">
             {recentActivities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nicio activitate recenta.</p>
+              <p className="text-sm text-gray-500">Nicio activitate recenta.</p>
             ) : (
               recentActivities.map((activity) => {
                 const typeStyles: Record<string, { icon: typeof Car; color: string }> = {
@@ -267,7 +267,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                   >
                     <Icon className={`h-4 w-4 shrink-0 ${color}`} />
                     <p className="flex-1 text-sm">{activity.text}</p>
-                    <span className="shrink-0 text-xs text-muted-foreground">
+                    <span className="shrink-0 text-sm text-gray-500">
                       {activity.time.toLocaleString("ro-RO")}
                     </span>
                   </div>

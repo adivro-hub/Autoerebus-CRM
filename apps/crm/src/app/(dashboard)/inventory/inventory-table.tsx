@@ -114,7 +114,7 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                           {vehicle.make.name} {vehicle.model.name} ({vehicle.year})
                         </p>
                         {vehicle.specialBadge && vehicle.specialBadgeText && (
-                          <Badge variant="destructive" className="mt-0.5 text-[10px]">
+                          <Badge variant="destructive" className="mt-0.5 text-sm">
                             {vehicle.specialBadgeText}
                           </Badge>
                         )}
@@ -128,14 +128,14 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                   <td className="px-4 py-3">
                     {vehicle.discountPrice ? (
                       <div>
-                        <p className="text-xs text-muted-foreground line-through">
+                        <p className="text-sm text-gray-500 line-through">
                           {formatCurrency(vehicle.price, vehicle.currency)}
                         </p>
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-red-600">
                             {formatCurrency(vehicle.discountPrice, vehicle.currency)}
                           </p>
-                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                          <span className="rounded bg-red-100 px-1.5 py-0.5 text-sm font-semibold text-red-700">
                             PROMO
                           </span>
                         </div>
@@ -151,7 +151,7 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                       {statusInfo.label}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                  <td className="px-4 py-3 text-sm text-gray-500">
                     {vehicle.agent
                       ? `${vehicle.agent.firstName} ${vehicle.agent.lastName}`
                       : "-"}
@@ -168,7 +168,7 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                             href={viewUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-gray-500 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                             title="Vezi pe site"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -177,14 +177,14 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                       })()}
                       <Link
                         href={`/inventory/${vehicle.id}/edit`}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:bg-accent hover:text-foreground"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-gray-500 hover:bg-accent hover:text-foreground"
                         title="Editeaza"
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Link>
                       <button
                         onClick={() => setDeleteId(vehicle.id)}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-gray-500 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
                         title="Sterge"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -207,8 +207,8 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Stergere vehicul</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <h3 className="text-base font-semibold">Stergere vehicul</h3>
+                <p className="mt-2 text-sm text-gray-500">
                   Esti sigur ca vrei sa stergi{" "}
                   <span className="font-medium text-foreground">
                     {deletingVehicle

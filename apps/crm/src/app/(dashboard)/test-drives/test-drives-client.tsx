@@ -406,8 +406,8 @@ export default function TestDrivesClient({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight">Test Drive</h1>
-          <p className="text-sm text-muted-foreground">{testDrives.length} programari totale</p>
+          <h1 className="font-heading text-base font-bold tracking-tight">Test Drive</h1>
+          <p className="text-sm text-gray-500">{testDrives.length} programari totale</p>
         </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="h-4 w-4" />
@@ -431,7 +431,7 @@ export default function TestDrivesClient({
         <div>
           <div className="flex items-center gap-2 mb-3">
             <Bell className="h-5 w-5 text-orange-500" />
-            <h2 className="text-lg font-semibold">Necesita confirmare</h2>
+            <h2 className="text-base font-semibold">Necesita confirmare</h2>
             <Badge className="bg-orange-100 text-orange-700">{unconfirmed.length}</Badge>
           </div>
 
@@ -446,33 +446,33 @@ export default function TestDrivesClient({
                         day: "numeric",
                         month: "short",
                       })}
-                      <Clock className="h-3.5 w-3.5 text-muted-foreground ml-1" />
+                      <Clock className="h-3.5 w-3.5 text-gray-500 ml-1" />
                       {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", {
                         hour: "2-digit",
                         minute: "2-digit",
                       })}
                     </div>
-                    <span className="text-xs text-muted-foreground">{td.duration} min</span>
+                    <span className="text-sm text-gray-500">{td.duration} min</span>
                   </div>
 
                   <div className="mt-3 space-y-1.5">
                     <div className="flex items-center gap-2">
-                      <User className="h-3.5 w-3.5 text-muted-foreground" />
+                      <User className="h-3.5 w-3.5 text-gray-500" />
                       <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
                         {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
                       </button>
                       {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
-                        <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
+                        <span className="text-sm text-gray-500">(cont: {td.customer.firstName} {td.customer.lastName})</span>
                       )}
                     </div>
                     {(td.contactPhone || td.customer.phone) && (
-                      <a href={`tel:${td.contactPhone || td.customer.phone}`} className="flex items-center gap-2 text-xs text-blue-600 hover:underline ml-5">
+                      <a href={`tel:${td.contactPhone || td.customer.phone}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline ml-5">
                         <Phone className="h-3 w-3" />
                         {td.contactPhone || td.customer.phone}
                       </a>
                     )}
                     {(td.contactEmail || td.customer.email) && (
-                      <a href={`mailto:${td.customer.email}`} className="flex items-center gap-2 text-xs text-blue-600 hover:underline ml-5">
+                      <a href={`mailto:${td.customer.email}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline ml-5">
                         <Mail className="h-3 w-3" />
                         {td.customer.email}
                       </a>
@@ -488,7 +488,7 @@ export default function TestDrivesClient({
                   </div>
 
                   {td.notes && (
-                    <p className="mt-2 text-xs text-muted-foreground italic border-t pt-2">
+                    <p className="mt-2 text-sm text-gray-500 italic border-t pt-2">
                       {td.notes}
                     </p>
                   )}
@@ -562,7 +562,7 @@ export default function TestDrivesClient({
             {/* Day headers */}
             <div className="grid grid-cols-7 mb-1">
               {DAYS_RO.map((d) => (
-                <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">
+                <div key={d} className="text-center text-sm font-medium text-gray-500 py-1">
                   {d}
                 </div>
               ))}
@@ -581,7 +581,7 @@ export default function TestDrivesClient({
                     onClick={() => setSelectedDate(date === selectedDate ? null : date)}
                     className={`
                       relative flex flex-col items-center justify-center py-2 text-sm rounded-md transition-colors
-                      ${!isCurrentMonth ? "text-muted-foreground/40" : ""}
+                      ${!isCurrentMonth ? "text-gray-500/40" : ""}
                       ${isToday && !isSelected ? "bg-blue-50 font-bold text-blue-700" : ""}
                       ${isSelected ? "bg-blue-600 text-white" : "hover:bg-accent"}
                     `}
@@ -590,7 +590,7 @@ export default function TestDrivesClient({
                     {count > 0 && (
                       <span
                         className={`
-                          mt-0.5 text-[10px] font-bold leading-none rounded-full px-1.5 py-0.5
+                          mt-0.5 text-sm font-bold leading-none rounded-full px-1.5 py-0.5
                           ${isSelected ? "bg-white/30 text-white" : "bg-blue-100 text-blue-700"}
                         `}
                       >
@@ -622,7 +622,7 @@ export default function TestDrivesClient({
                 </h3>
 
                 {selectedDayDrives.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <div className="flex flex-col items-center justify-center py-8 text-gray-500">
                     <Calendar className="h-8 w-8 mb-2" />
                     <p className="text-sm">Nicio programare in aceasta zi</p>
                   </div>
@@ -642,20 +642,20 @@ export default function TestDrivesClient({
                         >
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <Clock className="h-4 w-4 text-gray-500" />
                               <span className="text-sm font-bold">
                                 {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", {
                                   hour: "2-digit",
                                   minute: "2-digit",
                                 })}
                               </span>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-sm text-gray-500">
                                 ({td.duration} min)
                               </span>
                               {td.status !== "COMPLETED" && td.status !== "CANCELLED" && td.status !== "NO_SHOW" && (
                                 <button
                                   onClick={() => openReschedule(td)}
-                                  className="ml-1 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                  className="ml-1 rounded-md p-1 text-gray-500 hover:bg-muted hover:text-foreground transition-colors"
                                   title="Reprogramează"
                                 >
                                   <Calendar className="h-3.5 w-3.5" />
@@ -669,7 +669,7 @@ export default function TestDrivesClient({
                                 onClick={() =>
                                   setStatusMenuId(statusMenuId === td.id ? null : td.id)
                                 }
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${statusInfo.color}`}
+                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium ${statusInfo.color}`}
                               >
                                 {statusInfo.label}
                                 {transitions.length > 0 && <ChevronDown className="h-3 w-3" />}
@@ -717,21 +717,21 @@ export default function TestDrivesClient({
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <div className="flex items-center gap-1.5">
-                                <User className="h-3.5 w-3.5 text-muted-foreground" />
+                                <User className="h-3.5 w-3.5 text-gray-500" />
                                 <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
                                   {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
                                 </button>
                                 {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
-                                  <span className="text-xs text-muted-foreground">(cont: {td.customer.firstName} {td.customer.lastName})</span>
+                                  <span className="text-sm text-gray-500">(cont: {td.customer.firstName} {td.customer.lastName})</span>
                                 )}
                               </div>
                               {(td.contactPhone || td.customer.phone) && (
-                                <a href={`tel:${td.contactPhone || td.customer.phone}`} className="ml-5 text-xs text-blue-600 hover:underline">
+                                <a href={`tel:${td.contactPhone || td.customer.phone}`} className="ml-5 text-sm text-blue-600 hover:underline">
                                   {td.contactPhone || td.customer.phone}
                                 </a>
                               )}
                               {(td.contactEmail || td.customer.email) && (
-                                <div className="ml-5 text-xs text-muted-foreground truncate">
+                                <div className="ml-5 text-sm text-gray-500 truncate">
                                   {td.contactEmail || td.customer.email}
                                 </div>
                               )}
@@ -746,7 +746,7 @@ export default function TestDrivesClient({
                                 </Link>
                               )}
                               {td.agent && (
-                                <div className="ml-5 text-xs text-muted-foreground">
+                                <div className="ml-5 text-sm text-gray-500">
                                   Agent: {td.agent.firstName} {td.agent.lastName}
                                 </div>
                               )}
@@ -795,14 +795,14 @@ export default function TestDrivesClient({
                           )}
 
                           {td.feedback && (
-                            <div className="border-t pt-1.5 text-xs">
-                              <span className="font-medium text-muted-foreground">Feedback:</span>{" "}
+                            <div className="border-t pt-1.5 text-sm">
+                              <span className="font-medium text-gray-500">Feedback:</span>{" "}
                               <span>{td.feedback}</span>
                             </div>
                           )}
 
                           {td.notes && (
-                            <p className="text-xs text-muted-foreground italic border-t pt-1.5">
+                            <p className="text-sm text-gray-500 italic border-t pt-1.5">
                               {td.notes}
                             </p>
                           )}
@@ -813,7 +813,7 @@ export default function TestDrivesClient({
                 )}
               </>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                 <Calendar className="h-10 w-10 mb-3" />
                 <p className="font-medium">Selectati o zi din calendar</p>
                 <p className="text-sm">pentru a vedea programarile</p>
@@ -828,9 +828,9 @@ export default function TestDrivesClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold">Programeaza Test Drive</h2>
+              <h2 className="text-base font-semibold">Programeaza Test Drive</h2>
               <button onClick={() => setShowForm(false)}>
-                <X className="h-5 w-5 text-muted-foreground" />
+                <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
 
@@ -841,7 +841,7 @@ export default function TestDrivesClient({
                   Vehicul <span className="text-red-500">*</span>
                 </label>
                 {vehicles.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">
+                  <p className="text-sm text-gray-500 italic">
                     Niciun vehicul disponibil. Activati &quot;Disponibil pentru test drive&quot; pe vehicule din inventar.
                   </p>
                 ) : (
@@ -869,7 +869,7 @@ export default function TestDrivesClient({
                 {!showNewCustomer ? (
                   <>
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                       <input
                         type="text"
                         placeholder="Cauta client..."
@@ -898,10 +898,10 @@ export default function TestDrivesClient({
                             onClick={() => setFormData((f) => ({ ...f, customerId: c.id }))}
                             className="w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-accent text-left border-b last:border-0"
                           >
-                            <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <User className="h-4 w-4 text-gray-500 shrink-0" />
                             <div>
                               <div className="font-medium">{c.firstName} {c.lastName}</div>
-                              <div className="text-xs text-muted-foreground flex gap-3">
+                              <div className="text-sm text-gray-500 flex gap-3">
                                 {c.phone && <span><Phone className="h-3 w-3 inline mr-1" />{c.phone}</span>}
                                 {c.email && <span><Mail className="h-3 w-3 inline mr-1" />{c.email}</span>}
                               </div>
@@ -910,7 +910,7 @@ export default function TestDrivesClient({
                         ))}
                       </div>
                     )}
-                    <button type="button" onClick={() => setShowNewCustomer(true)} className="mt-2 text-xs text-blue-600 hover:underline">
+                    <button type="button" onClick={() => setShowNewCustomer(true)} className="mt-2 text-sm text-blue-600 hover:underline">
                       + Adauga client nou
                     </button>
                   </>
@@ -1014,7 +1014,7 @@ export default function TestDrivesClient({
       {rescheduleId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl space-y-4">
-            <h3 className="text-lg font-semibold">Reprogramează Test Drive</h3>
+            <h3 className="text-base font-semibold">Reprogramează Test Drive</h3>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
               <input
