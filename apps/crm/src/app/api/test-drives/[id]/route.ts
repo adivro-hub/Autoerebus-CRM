@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
+import { updateGoogleEvent, deleteGoogleEvent } from "@/lib/google-calendar";
 
 // PATCH - update test drive status
 export async function PATCH(
@@ -32,6 +33,19 @@ export async function PATCH(
         ...(body.duration && { duration: body.duration }),
       },
     });
+
+    // Sync to Google Calendar (update or delete if cancelled/no-show)
+    if (existing.googleEventId && existing.agentId) {
+      if (body.status === "CANCELLED" || body.status === "NO_SHOW") {
+        deleteGoogleEvent(existing.agentId, existing.googleEventId).catch(() => {});
+        await prisma.testDrive.update({ where: { id }, data: { googleEventId: null } }).catch(() => {});
+      } else if (body.scheduledAt || body.duration) {
+        const start = new Date(body.scheduledAt || existing.scheduledAt);
+        const dur = body.duration || existing.duration || 30;
+        const end = new Date(start.getTime() + dur * 60 * 1000);
+        updateGoogleEvent(existing.agentId, existing.googleEventId, { start, end }).catch(() => {});
+      }
+    }
 
     // If test drive CONFIRMED, move lead/deal to "Test Drive Programat" and set lead to QUALIFIED
     if (body.status === "CONFIRMED" && existing.vehicleId) {

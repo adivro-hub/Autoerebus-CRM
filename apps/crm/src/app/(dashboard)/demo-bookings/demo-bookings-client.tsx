@@ -7,6 +7,7 @@ import { Badge } from "@autoerebus/ui";
 import { Input } from "@autoerebus/ui";
 import { CarFront, Plus, Calendar, Check, X, Clock, AlertCircle, Edit2, AlertTriangle } from "lucide-react";
 import { useBrand } from "@/components/brand-switcher";
+import { useToast } from "@/components/toast-provider";
 import BookingFormModal from "./booking-form-modal";
 
 interface Vehicle {
@@ -111,6 +112,7 @@ export default function DemoBookingsClient({
   teamMembers,
 }: Props) {
   const { selectedBrand } = useBrand();
+  const toast = useToast();
   const [tab, setTab] = useState<Tab>("available");
   const [loading, setLoading] = useState(false);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -191,10 +193,11 @@ export default function DemoBookingsClient({
     if (!confirm("Aprobi această rezervare?")) return;
     const res = await fetch(`/api/demo-bookings/${bookingId}/approve`, { method: "POST" });
     if (res.ok) {
+      toast.success("Rezervare aprobată");
       await loadBookings(tab === "approvals" ? "pending-approval" : "team");
     } else {
       const data = await res.json();
-      alert("Eroare: " + (data.error || "necunoscută"));
+      toast.error(data.error || "Nu s-a putut aproba rezervarea", "Eroare");
     }
   }
 
@@ -207,10 +210,11 @@ export default function DemoBookingsClient({
       body: JSON.stringify({ reason }),
     });
     if (res.ok) {
+      toast.success("Rezervare respinsă");
       await loadBookings(tab === "approvals" ? "pending-approval" : "team");
     } else {
       const data = await res.json();
-      alert("Eroare: " + (data.error || "necunoscută"));
+      toast.error(data.error || "Nu s-a putut respinge rezervarea", "Eroare");
     }
   }
 
@@ -222,8 +226,12 @@ export default function DemoBookingsClient({
       body: JSON.stringify({ reason }),
     });
     if (res.ok) {
+      toast.success("Rezervare anulată");
       const filter = tab === "mine" ? "mine" : tab === "created" ? "created-by-me" : "team";
       await loadBookings(filter);
+    } else {
+      const data = await res.json();
+      toast.error(data.error || "Nu s-a putut anula rezervarea", "Eroare");
     }
   }
 

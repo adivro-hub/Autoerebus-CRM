@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { CustomerOverlay } from "@/components/customer-overlay";
+import { useToast } from "@/components/toast-provider";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -97,6 +99,22 @@ export default function TestDrivesClient({
 }: {
   initialTestDrives: TestDrive[];
 }) {
+  const toast = useToast();
+  const router = useRouter();
+
+  async function goToLead(testDriveId: string) {
+    try {
+      const res = await fetch(`/api/leads/by-test-drive/${testDriveId}`);
+      const data = await res.json();
+      if (data.lead?.id) {
+        router.push(`/sales?leadId=${data.lead.id}`);
+      } else {
+        toast.warning("Nu există lead asociat acestui test drive");
+      }
+    } catch {
+      toast.error("Nu s-a putut găsi lead-ul", "Eroare");
+    }
+  }
   const [testDrives, setTestDrives] = useState<TestDrive[]>(initialTestDrives);
   const [showForm, setShowForm] = useState(false);
   const [statusMenuId, setStatusMenuId] = useState<string | null>(null);
@@ -132,8 +150,13 @@ export default function TestDrivesClient({
     notes: "",
   });
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+
+  // Filters & search
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("ALL");
+  const [filterAgent, setFilterAgent] = useState<string>("ALL");
+  const [groupBy, setGroupBy] = useState<"none" | "brand" | "agent">("none");
+  const [calView, setCalView] = useState<"month" | "week">("month");
 
   // Reschedule state
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
@@ -152,32 +175,96 @@ export default function TestDrivesClient({
 
   // ─── Derived data ───────────────────────────────────────
 
+  // Apply search + filters to all test drives
+  const filteredTestDrives = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return testDrives.filter((td) => {
+      if (filterStatus !== "ALL" && td.status !== filterStatus) return false;
+      if (filterAgent !== "ALL") {
+        if (filterAgent === "none" && td.agent) return false;
+        if (filterAgent !== "none" && td.agent?.id !== filterAgent) return false;
+      }
+      if (q) {
+        const customerName = `${td.customer.firstName} ${td.customer.lastName}`.toLowerCase();
+        const contactName = (td.contactName || "").toLowerCase();
+        const phone = (td.contactPhone || td.customer.phone || "").toLowerCase();
+        const vehicleName = td.vehicle
+          ? `${td.vehicle.make.name} ${td.vehicle.model.name}`.toLowerCase()
+          : "";
+        const matches =
+          customerName.includes(q) ||
+          contactName.includes(q) ||
+          phone.includes(q) ||
+          vehicleName.includes(q);
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [testDrives, search, filterStatus, filterAgent]);
+
   const unconfirmed = useMemo(
-    () => testDrives.filter((td) => td.status === "SCHEDULED"),
-    [testDrives]
+    () => filteredTestDrives.filter((td) => td.status === "SCHEDULED"),
+    [filteredTestDrives]
   );
 
-  // Count test drives per day for calendar
+  // Count test drives per day for calendar (use filtered)
   const countsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
-    testDrives.forEach((td) => {
+    filteredTestDrives.forEach((td) => {
       if (td.status === "CANCELLED" || td.status === "NO_SHOW") return;
       const key = toLocalDateStr(td.scheduledAt);
       counts[key] = (counts[key] || 0) + 1;
     });
     return counts;
-  }, [testDrives]);
+  }, [filteredTestDrives]);
 
   // Test drives for selected day
   const selectedDayDrives = useMemo(() => {
     if (!selectedDate) return [];
-    return testDrives
+    return filteredTestDrives
       .filter((td) => {
         const tdDate = toLocalDateStr(td.scheduledAt);
         return tdDate === selectedDate;
       })
       .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  }, [testDrives, selectedDate]);
+  }, [filteredTestDrives, selectedDate]);
+
+  // Week view: list of 7 days (Mon-Sun) containing the selected date (or today)
+  const weekDays = useMemo(() => {
+    const base = selectedDate ? new Date(selectedDate + "T12:00:00") : new Date(todayStr + "T12:00:00");
+    const dayOfWeek = base.getDay(); // 0 = Sunday
+    const monOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(base);
+    monday.setDate(base.getDate() + monOffset);
+    const days: { date: string; drives: typeof filteredTestDrives }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const dateStr = toLocalDateStr(d);
+      const drives = filteredTestDrives
+        .filter((td) => toLocalDateStr(td.scheduledAt) === dateStr)
+        .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+      days.push({ date: dateStr, drives });
+    }
+    return days;
+  }, [selectedDate, filteredTestDrives]);
+
+  // Grouped drives for display
+  const groupedDayDrives = useMemo(() => {
+    if (groupBy === "none") return { "": selectedDayDrives };
+    const groups: Record<string, typeof selectedDayDrives> = {};
+    for (const td of selectedDayDrives) {
+      const key =
+        groupBy === "brand"
+          ? td.brand || "—"
+          : td.agent
+            ? `${td.agent.firstName} ${td.agent.lastName}`
+            : "Fără agent";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(td);
+    }
+    return groups;
+  }, [selectedDayDrives, groupBy]);
 
   // ─── Calendar grid ──────────────────────────────────────
 
@@ -265,19 +352,19 @@ export default function TestDrivesClient({
       setFormData((prev) => ({ ...prev, customerId: customer.id }));
       setShowNewCustomer(false);
       setNewCustomer({ firstName: "", lastName: "", phone: "", email: "" });
+      toast.success("Client creat");
     } catch {
-      setError("Eroare la crearea clientului");
+      toast.error("Nu s-a putut crea clientul", "Eroare");
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!formData.vehicleId || !formData.customerId || !formData.scheduledAt) {
-      setError("Selectati vehiculul, clientul si data");
+      toast.warning("Selectați vehiculul, clientul și data");
       return;
     }
     setSaving(true);
-    setError("");
     try {
       const res = await fetch("/api/test-drives", {
         method: "POST",
@@ -292,10 +379,9 @@ export default function TestDrivesClient({
       setTestDrives((prev) => [{ ...created, scheduledAt: created.scheduledAt }, ...prev]);
       setShowForm(false);
       setFormData({ vehicleId: "", customerId: "", scheduledAt: "", duration: 30, agentId: "", notes: "" });
-      setSuccess("Test drive programat cu succes!");
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success("Test drive programat");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Eroare la programare");
+      toast.error(err instanceof Error ? err.message : "Nu s-a putut programa", "Eroare");
     } finally {
       setSaving(false);
     }
@@ -308,13 +394,23 @@ export default function TestDrivesClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) throw new Error("Eroare la actualizare");
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Eroare la actualizare");
+      }
       setTestDrives((prev) =>
         prev.map((td) => (td.id === id ? { ...td, status: newStatus } : td))
       );
       setStatusMenuId(null);
-    } catch {
-      setError("Eroare la actualizarea statusului");
+      const labels: Record<string, string> = {
+        CONFIRMED: "Test drive confirmat",
+        CANCELLED: "Test drive anulat",
+        IN_PROGRESS: "Test drive în desfășurare",
+        NO_SHOW: "Marcat ca No Show",
+      };
+      toast.success(labels[newStatus] || "Status actualizat");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Nu s-a putut actualiza statusul", "Eroare");
     }
   }
 
@@ -334,8 +430,9 @@ export default function TestDrivesClient({
       setCompletingId(null);
       setCompleteFeedback("");
       setStatusMenuId(null);
+      toast.success("Test drive finalizat");
     } catch {
-      setError("Eroare la confirmarea test drive-ului");
+      toast.error("Nu s-a putut finaliza test drive-ul", "Eroare");
     } finally {
       setCompletingLoading(false);
     }
@@ -347,8 +444,9 @@ export default function TestDrivesClient({
       const res = await fetch(`/api/test-drives/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Eroare la stergere");
       setTestDrives((prev) => prev.filter((td) => td.id !== id));
+      toast.success("Test drive șters");
     } catch {
-      setError("Eroare la stergere");
+      toast.error("Nu s-a putut șterge test drive-ul", "Eroare");
     }
   }
 
@@ -378,10 +476,9 @@ export default function TestDrivesClient({
         )
       );
       setRescheduleId(null);
-      setSuccess("Test drive reprogramat cu succes!");
-      setTimeout(() => setSuccess(""), 3000);
+      toast.success("Test drive reprogramat");
     } catch {
-      setError("Eroare la reprogramarea test drive-ului");
+      toast.error("Nu s-a putut reprograma test drive-ul", "Eroare");
     } finally {
       setRescheduleSaving(false);
     }
@@ -393,38 +490,82 @@ export default function TestDrivesClient({
 
   return (
     <div className="space-y-6">
-      {/* Success Toast */}
-      {success && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 rounded-lg bg-green-600 px-4 py-3 text-sm text-white shadow-lg">
-          <div className="flex items-center gap-2">
-            <Check className="h-4 w-4" />
-            {success}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="font-heading text-base font-bold tracking-tight">Test Drive</h1>
-          <p className="text-sm text-gray-500">{testDrives.length} programari totale</p>
+          <p className="text-sm text-gray-500">
+            {filteredTestDrives.length} din {testDrives.length} programări
+          </p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => setShowForm(true)} className="w-full sm:w-auto">
           <Plus className="h-4 w-4" />
           Programeaza Test Drive
         </Button>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4" />
-          {error}
-          <button onClick={() => setError("")} className="ml-auto">
-            <X className="h-3 w-3" />
-          </button>
+      {/* Filters + Search */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-full sm:min-w-[200px] sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Caută client, telefon, mașină..."
+            className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+          />
         </div>
-      )}
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900"
+        >
+          <option value="ALL">Toate statusurile</option>
+          <option value="SCHEDULED">Programat</option>
+          <option value="CONFIRMED">Confirmat</option>
+          <option value="IN_PROGRESS">În desfășurare</option>
+          <option value="COMPLETED">Finalizat</option>
+          <option value="CANCELLED">Anulat</option>
+          <option value="NO_SHOW">No show</option>
+        </select>
+        <select
+          value={filterAgent}
+          onChange={(e) => setFilterAgent(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900"
+        >
+          <option value="ALL">Toți agenții</option>
+          <option value="none">Fără agent</option>
+          {agents.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.firstName} {a.lastName}
+            </option>
+          ))}
+        </select>
+        <select
+          value={groupBy}
+          onChange={(e) => setGroupBy(e.target.value as any)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900"
+        >
+          <option value="none">Fără grupare</option>
+          <option value="brand">Grupează: brand</option>
+          <option value="agent">Grupează: agent</option>
+        </select>
+        {(search || filterStatus !== "ALL" || filterAgent !== "ALL" || groupBy !== "none") && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch("");
+              setFilterStatus("ALL");
+              setFilterAgent("ALL");
+              setGroupBy("none");
+            }}
+          >
+            Resetează
+          </Button>
+        )}
+      </div>
 
       {/* ═══ SECTION 1: Unconfirmed ═══ */}
       {unconfirmed.length > 0 && (
@@ -437,81 +578,82 @@ export default function TestDrivesClient({
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {unconfirmed.map((td) => (
-              <Card key={td.id} className="border-orange-200 bg-orange-50/50">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2 text-sm font-medium">
-                      <Calendar className="h-4 w-4 text-orange-500" />
-                      {new Date(td.scheduledAt).toLocaleDateString("ro-RO", {
-                        day: "numeric",
-                        month: "short",
-                      })}
-                      <Clock className="h-3.5 w-3.5 text-gray-500 ml-1" />
-                      {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+              <Card key={td.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setSelectedCustomerId(td.customerId)}
+                      className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:underline"
+                    >
+                      <User className="h-3.5 w-3.5 text-gray-400" />
+                      {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <span className="inline-flex rounded-full px-2 py-0.5 text-sm font-medium bg-orange-100 text-orange-700">
+                        Neconfirmat
+                      </span>
+                      <span className="inline-flex rounded-full border border-gray-900 px-2 py-0.5 text-sm font-medium text-gray-900">
+                        {td.brand}
+                      </span>
                     </div>
-                    <span className="text-sm text-gray-500">{td.duration} min</span>
                   </div>
 
-                  <div className="mt-3 space-y-1.5">
-                    <div className="flex items-center gap-2">
-                      <User className="h-3.5 w-3.5 text-gray-500" />
-                      <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
-                        {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
-                      </button>
-                      {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
-                        <span className="text-sm text-gray-500">(cont: {td.customer.firstName} {td.customer.lastName})</span>
-                      )}
-                    </div>
-                    {(td.contactPhone || td.customer.phone) && (
-                      <a href={`tel:${td.contactPhone || td.customer.phone}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline ml-5">
-                        <Phone className="h-3 w-3" />
-                        {td.contactPhone || td.customer.phone}
-                      </a>
-                    )}
-                    {(td.contactEmail || td.customer.email) && (
-                      <a href={`mailto:${td.customer.email}`} className="flex items-center gap-2 text-sm text-blue-600 hover:underline ml-5">
-                        <Mail className="h-3 w-3" />
-                        {td.customer.email}
-                      </a>
-                    )}
-                    {td.vehicle && (
-                      <Link href={`/inventory/${td.vehicle.id}/edit`} className="flex items-center gap-2 text-blue-600 hover:underline">
-                        <Car className="h-3.5 w-3.5" />
-                        <span className="text-sm">
-                          {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
-                        </span>
+                  {td.vehicle && (
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <Link
+                        href={`/inventory/${td.vehicle.id}/edit`}
+                        className="flex items-center gap-1.5 text-sm truncate hover:underline"
+                        style={{ color: "#333" }}
+                      >
+                        <Car className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
                       </Link>
-                    )}
+                      <button
+                        onClick={() => goToLead(td.id)}
+                        className="text-sm text-gray-500 hover:text-gray-900 hover:underline shrink-0"
+                        title="Vezi lead asociat"
+                      >
+                        Vezi lead →
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="mt-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-green-600 px-3 py-2">
+                      <span className="text-sm font-medium text-white">
+                        {new Date(td.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} —{" "}
+                        {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <button
+                          onClick={() => handleStatusChange(td.id, "CONFIRMED")}
+                          className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                          title="Confirmă"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span className="text-sm font-medium hidden sm:inline">Confirmă</span>
+                        </button>
+                        <button
+                          onClick={() => openReschedule(td)}
+                          className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
+                          title="Reprogramează"
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => handleStatusChange(td.id, "CANCELLED")}
+                          className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
+                          title="Anulează"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   {td.notes && (
-                    <p className="mt-2 text-sm text-gray-500 italic border-t pt-2">
-                      {td.notes}
-                    </p>
+                    <p className="mt-2 text-sm text-gray-500 italic">{td.notes}</p>
                   )}
-
-                  <div className="mt-3 flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1 bg-green-600 hover:bg-green-700"
-                      onClick={() => handleStatusChange(td.id, "CONFIRMED")}
-                    >
-                      <Check className="h-3.5 w-3.5 mr-1" />
-                      Confirma
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => handleStatusChange(td.id, "CANCELLED")}
-                    >
-                      <X className="h-3.5 w-3.5 mr-1" />
-                      Anuleaza
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -525,82 +667,161 @@ export default function TestDrivesClient({
         <Card>
           <CardContent className="p-4">
             {/* Month navigation */}
-            <div className="flex items-center justify-between mb-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (calMonth === 0) {
-                    setCalMonth(11);
-                    setCalYear((y) => y - 1);
-                  } else {
-                    setCalMonth((m) => m - 1);
-                  }
-                }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (calView === "week") {
+                      const base = new Date((selectedDate || todayStr) + "T12:00:00");
+                      base.setDate(base.getDate() - 7);
+                      setSelectedDate(toLocalDateStr(base));
+                    } else if (calMonth === 0) {
+                      setCalMonth(11);
+                      setCalYear((y) => y - 1);
+                    } else {
+                      setCalMonth((m) => m - 1);
+                    }
+                  }}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const now = new Date();
+                    setCalMonth(now.getMonth());
+                    setCalYear(now.getFullYear());
+                    setSelectedDate(todayStr);
+                  }}
+                >
+                  Azi
+                </Button>
+              </div>
               <h3 className="text-sm font-semibold">
                 {MONTHS_RO[calMonth]} {calYear}
               </h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  if (calMonth === 11) {
-                    setCalMonth(0);
-                    setCalYear((y) => y + 1);
-                  } else {
-                    setCalMonth((m) => m + 1);
-                  }
-                }}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Day headers */}
-            <div className="grid grid-cols-7 mb-1">
-              {DAYS_RO.map((d) => (
-                <div key={d} className="text-center text-sm font-medium text-gray-500 py-1">
-                  {d}
-                </div>
-              ))}
-            </div>
-
-            {/* Day cells */}
-            <div className="grid grid-cols-7">
-              {calendarDays.map(({ date, day, isCurrentMonth }) => {
-                const count = countsByDate[date] || 0;
-                const isToday = date === todayStr;
-                const isSelected = date === selectedDate;
-
-                return (
+              <div className="flex items-center gap-1">
+                <div className="flex rounded-md border overflow-hidden">
                   <button
-                    key={date}
-                    onClick={() => setSelectedDate(date === selectedDate ? null : date)}
-                    className={`
-                      relative flex flex-col items-center justify-center py-2 text-sm rounded-md transition-colors
-                      ${!isCurrentMonth ? "text-gray-500/40" : ""}
-                      ${isToday && !isSelected ? "bg-blue-50 font-bold text-blue-700" : ""}
-                      ${isSelected ? "bg-blue-600 text-white" : "hover:bg-accent"}
-                    `}
+                    onClick={() => setCalView("month")}
+                    className={`px-2 py-1 text-sm ${calView === "month" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}
                   >
-                    <span>{day}</span>
-                    {count > 0 && (
-                      <span
+                    Lună
+                  </button>
+                  <button
+                    onClick={() => setCalView("week")}
+                    className={`px-2 py-1 text-sm ${calView === "week" ? "bg-gray-900 text-white" : "bg-white text-gray-900"}`}
+                  >
+                    Săptămână
+                  </button>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (calView === "week") {
+                      const base = new Date((selectedDate || todayStr) + "T12:00:00");
+                      base.setDate(base.getDate() + 7);
+                      setSelectedDate(toLocalDateStr(base));
+                    } else if (calMonth === 11) {
+                      setCalMonth(0);
+                      setCalYear((y) => y + 1);
+                    } else {
+                      setCalMonth((m) => m + 1);
+                    }
+                  }}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+
+            {calView === "month" ? (
+              <>
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-1">
+                  {DAYS_RO.map((d) => (
+                    <div key={d} className="text-center text-sm font-medium text-gray-500 py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Day cells */}
+                <div className="grid grid-cols-7">
+                  {calendarDays.map(({ date, day, isCurrentMonth }) => {
+                    const count = countsByDate[date] || 0;
+                    const isToday = date === todayStr;
+                    const isSelected = date === selectedDate;
+
+                    return (
+                      <button
+                        key={date}
+                        onClick={() => setSelectedDate(date === selectedDate ? null : date)}
                         className={`
-                          mt-0.5 text-sm font-bold leading-none rounded-full px-1.5 py-0.5
-                          ${isSelected ? "bg-white/30 text-white" : "bg-blue-100 text-blue-700"}
+                          relative flex flex-col items-center justify-center py-2 text-sm rounded-md transition-colors
+                          ${!isCurrentMonth ? "text-gray-500/40" : ""}
+                          ${isToday && !isSelected ? "bg-blue-50 font-bold text-blue-700" : ""}
+                          ${isSelected ? "bg-blue-600 text-white" : "hover:bg-accent"}
                         `}
                       >
-                        {count}
+                        <span>{day}</span>
+                        {count > 0 && (
+                          <span
+                            className={`
+                              mt-0.5 text-sm font-bold leading-none rounded-full px-1.5 py-0.5
+                              ${isSelected ? "bg-white/30 text-white" : "bg-blue-100 text-blue-700"}
+                            `}
+                          >
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              // Week view
+              <div className="space-y-1">
+                {weekDays.map(({ date, drives }) => {
+                  const isToday = date === todayStr;
+                  const isSelected = date === selectedDate;
+                  const d = new Date(date + "T12:00:00");
+                  return (
+                    <button
+                      key={date}
+                      onClick={() => setSelectedDate(date === selectedDate ? null : date)}
+                      className={`
+                        flex items-center justify-between w-full p-3 rounded-md transition-colors
+                        ${isSelected ? "bg-blue-600 text-white" : isToday ? "bg-blue-50 text-blue-700" : "hover:bg-accent"}
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-left">
+                          <div className="text-sm font-medium">
+                            {d.toLocaleDateString("ro-RO", { weekday: "long" })}
+                          </div>
+                          <div className="text-sm">
+                            {d.toLocaleDateString("ro-RO", { day: "numeric", month: "short" })}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-sm font-bold ${
+                          isSelected ? "bg-white/30 text-white" : drives.length > 0 ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {drives.length} {drives.length === 1 ? "programare" : "programări"}
                       </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -627,131 +848,150 @@ export default function TestDrivesClient({
                     <p className="text-sm">Nicio programare in aceasta zi</p>
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-[450px] overflow-y-auto pr-1">
-                    {selectedDayDrives.map((td) => {
+                  <div className="space-y-4 max-h-[450px] overflow-y-auto pr-1">
+                    {Object.entries(groupedDayDrives).map(([groupName, groupDrives]) => (
+                      <div key={groupName || "all"} className="space-y-3">
+                        {groupName && (
+                          <div className="sticky top-0 bg-white/95 backdrop-blur-sm py-1 flex items-center gap-2 border-b">
+                            <span className="text-sm font-semibold text-gray-900">{groupName}</span>
+                            <span className="text-sm text-gray-500">({groupDrives.length})</span>
+                          </div>
+                        )}
+                        {groupDrives.map((td) => {
                       const statusInfo = STATUS_CONFIG[td.status] ?? {
                         label: td.status,
                         color: "",
                       };
                       const transitions = STATUS_TRANSITIONS[td.status] ?? [];
+                      const isActive = td.status === "SCHEDULED" || td.status === "CONFIRMED";
 
                       return (
-                        <div
-                          key={td.id}
-                          className="rounded-lg border p-3 space-y-2"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-gray-500" />
-                              <span className="text-sm font-bold">
-                                {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                              <span className="text-sm text-gray-500">
-                                ({td.duration} min)
-                              </span>
-                              {td.status !== "COMPLETED" && td.status !== "CANCELLED" && td.status !== "NO_SHOW" && (
-                                <button
-                                  onClick={() => openReschedule(td)}
-                                  className="ml-1 rounded-md p-1 text-gray-500 hover:bg-muted hover:text-foreground transition-colors"
-                                  title="Reprogramează"
-                                >
-                                  <Calendar className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Status dropdown */}
-                            <div className="relative">
+                        <Card key={td.id} className="hover:shadow-md transition-shadow">
+                          <CardContent className="p-5">
+                            <div className="flex items-center justify-between">
                               <button
-                                onClick={() =>
-                                  setStatusMenuId(statusMenuId === td.id ? null : td.id)
-                                }
-                                className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium ${statusInfo.color}`}
+                                onClick={() => setSelectedCustomerId(td.customerId)}
+                                className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:underline"
                               >
-                                {statusInfo.label}
-                                {transitions.length > 0 && <ChevronDown className="h-3 w-3" />}
+                                <User className="h-3.5 w-3.5 text-gray-400" />
+                                {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
                               </button>
-
-                              {statusMenuId === td.id && transitions.length > 0 && (
-                                <div className="absolute right-0 top-full mt-1 z-10 w-40 rounded-md border bg-white py-1 shadow-lg">
-                                  {transitions.map((status) => {
-                                    const s = STATUS_CONFIG[status];
-                                    return (
-                                      <button
-                                        key={status}
-                                        onClick={() => handleStatusChange(td.id, status)}
-                                        className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent flex items-center gap-2"
-                                      >
-                                        <span
-                                          className={`inline-block h-2 w-2 rounded-full ${
-                                            status === "CANCELLED" || status === "NO_SHOW"
-                                              ? "bg-red-500"
-                                              : status === "COMPLETED"
-                                              ? "bg-gray-500"
-                                              : status === "CONFIRMED"
-                                              ? "bg-green-500"
-                                              : status === "IN_PROGRESS"
-                                              ? "bg-yellow-500"
-                                              : "bg-blue-500"
-                                          }`}
-                                        />
-                                        {s?.label ?? status}
-                                      </button>
-                                    );
-                                  })}
-                                  <div className="border-t my-1" />
+                              <div className="flex items-center gap-1">
+                                <div className="relative">
                                   <button
-                                    onClick={() => handleDelete(td.id)}
-                                    className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                                    onClick={() =>
+                                      setStatusMenuId(statusMenuId === td.id ? null : td.id)
+                                    }
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium ${statusInfo.color}`}
                                   >
-                                    Sterge
+                                    {statusInfo.label}
+                                    {transitions.length > 0 && <ChevronDown className="h-3 w-3" />}
                                   </button>
+                                  {statusMenuId === td.id && transitions.length > 0 && (
+                                    <div className="absolute right-0 top-full mt-1 z-10 w-40 rounded-md border bg-white py-1 shadow-lg">
+                                      {transitions.map((status) => {
+                                        const s = STATUS_CONFIG[status];
+                                        return (
+                                          <button
+                                            key={status}
+                                            onClick={() => handleStatusChange(td.id, status)}
+                                            className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent flex items-center gap-2"
+                                          >
+                                            <span
+                                              className={`inline-block h-2 w-2 rounded-full ${
+                                                status === "CANCELLED" || status === "NO_SHOW"
+                                                  ? "bg-red-500"
+                                                  : status === "COMPLETED"
+                                                    ? "bg-gray-500"
+                                                    : status === "CONFIRMED"
+                                                      ? "bg-green-500"
+                                                      : status === "IN_PROGRESS"
+                                                        ? "bg-yellow-500"
+                                                        : "bg-blue-500"
+                                              }`}
+                                            />
+                                            {s?.label ?? status}
+                                          </button>
+                                        );
+                                      })}
+                                      <div className="border-t my-1" />
+                                      <button
+                                        onClick={() => handleDelete(td.id)}
+                                        className="w-full px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50"
+                                      >
+                                        Șterge
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <User className="h-3.5 w-3.5 text-gray-500" />
-                                <button onClick={() => setSelectedCustomerId(td.customerId)} className="text-sm font-medium text-blue-600 hover:underline">
-                                  {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
-                                </button>
-                                {td.contactName && td.contactName !== `${td.customer.firstName} ${td.customer.lastName}` && (
-                                  <span className="text-sm text-gray-500">(cont: {td.customer.firstName} {td.customer.lastName})</span>
-                                )}
+                                <span className="inline-flex rounded-full border border-gray-900 px-2 py-0.5 text-sm font-medium text-gray-900">
+                                  {td.brand}
+                                </span>
                               </div>
-                              {(td.contactPhone || td.customer.phone) && (
-                                <a href={`tel:${td.contactPhone || td.customer.phone}`} className="ml-5 text-sm text-blue-600 hover:underline">
+                            </div>
+
+                            {td.vehicle && (
+                              <Link
+                                href={`/inventory/${td.vehicle.id}/edit`}
+                                className="mt-1 flex items-center gap-1.5 text-sm truncate hover:underline"
+                                style={{ color: "#333" }}
+                              >
+                                <Car className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                                {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
+                              </Link>
+                            )}
+
+                            {(td.contactPhone || td.customer.phone) && (
+                              <div className="mt-0.5 text-sm text-gray-500">
+                                <a
+                                  href={`tel:${td.contactPhone || td.customer.phone}`}
+                                  className="hover:underline"
+                                >
                                   {td.contactPhone || td.customer.phone}
                                 </a>
-                              )}
-                              {(td.contactEmail || td.customer.email) && (
-                                <div className="ml-5 text-sm text-gray-500 truncate">
-                                  {td.contactEmail || td.customer.email}
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              {td.vehicle && (
-                                <Link href={`/inventory/${td.vehicle.id}/edit`} className="flex items-center gap-1.5 text-blue-600 hover:underline">
-                                  <Car className="h-3.5 w-3.5" />
-                                  <span className="text-sm">
-                                    {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
+                                {td.agent && ` · Agent: ${td.agent.firstName} ${td.agent.lastName}`}
+                              </div>
+                            )}
+
+                            {isActive && (
+                              <div className="mt-2">
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-green-600 px-3 py-2">
+                                  <span className="text-sm font-medium text-white">
+                                    {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}{" "}
+                                    · {td.duration} min
                                   </span>
-                                </Link>
-                              )}
-                              {td.agent && (
-                                <div className="ml-5 text-sm text-gray-500">
-                                  Agent: {td.agent.firstName} {td.agent.lastName}
+                                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                    {td.status === "SCHEDULED" && (
+                                      <button
+                                        onClick={() => handleStatusChange(td.id, "CONFIRMED")}
+                                        className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                                        title="Confirmă"
+                                      >
+                                        <Check className="h-3.5 w-3.5" />
+                                        <span className="text-sm font-medium">Confirmă</span>
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => openReschedule(td)}
+                                      className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
+                                      title="Reprogramează"
+                                    >
+                                      <Calendar className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleStatusChange(td.id, "CANCELLED")}
+                                      className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
+                                      title="Anulează"
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          </div>
+                              </div>
+                            )}
 
                           {(td.status === "CONFIRMED" || td.status === "IN_PROGRESS") && (
                             <div className="border-t pt-2 space-y-2">
@@ -794,21 +1034,24 @@ export default function TestDrivesClient({
                             </div>
                           )}
 
-                          {td.feedback && (
-                            <div className="border-t pt-1.5 text-sm">
-                              <span className="font-medium text-gray-500">Feedback:</span>{" "}
-                              <span>{td.feedback}</span>
-                            </div>
-                          )}
+                            {td.feedback && (
+                              <div className="mt-2 border-t pt-1.5 text-sm">
+                                <span className="font-medium text-gray-500">Feedback:</span>{" "}
+                                <span>{td.feedback}</span>
+                              </div>
+                            )}
 
-                          {td.notes && (
-                            <p className="text-sm text-gray-500 italic border-t pt-1.5">
-                              {td.notes}
-                            </p>
-                          )}
-                        </div>
+                            {td.notes && (
+                              <p className="mt-2 text-sm text-gray-500 italic">
+                                {td.notes}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
                       );
                     })}
+                      </div>
+                    ))}
                   </div>
                 )}
               </>

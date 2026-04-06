@@ -187,6 +187,11 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  // Google Calendar integration
+  googleRefreshToken String?
+  googleCalendarId   String?  // usually "primary"
+  googleEmail        String?
+
   // Relations
   assignedVehicles    Vehicle[]       @relation("VehicleAgent")
   assignedLeads       Lead[]          @relation("AssignedAgent")
@@ -626,6 +631,7 @@ model TestDrive {
   contactEmail String?         // Email provided in the booking
   notes        String?
   feedback     String?
+  googleEventId String?        // Google Calendar event ID (if synced)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

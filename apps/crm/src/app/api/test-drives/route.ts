@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
 import { handleTestDriveConflictWithDemoBookings } from "@/lib/demo-booking-trigger";
+import { createGoogleEvent } from "@/lib/google-calendar";
 
 // GET - fetch test drive vehicles and customers for the form
 export async function GET(request: NextRequest) {
@@ -209,6 +210,30 @@ export async function POST(request: NextRequest) {
       scheduledDate,
       durationMin
     ).catch((e) => console.error("[TD conflict check] error:", e));
+
+    // Sync with Google Calendar if agent has it connected
+    if (agentId) {
+      (async () => {
+        try {
+          const endDate = new Date(scheduledDate.getTime() + durationMin * 60 * 1000);
+          const eventId = await createGoogleEvent(agentId, {
+            summary: `Test drive — ${testDrive.customer.firstName} ${testDrive.customer.lastName}`,
+            description: `Vehicul: ${testDrive.vehicle?.make?.name || ""} ${testDrive.vehicle?.model?.name || ""} (${testDrive.vehicle?.year || ""})\n${notes || ""}`,
+            start: scheduledDate,
+            end: endDate,
+            location: "Autoerebus Showroom",
+          });
+          if (eventId) {
+            await prisma.testDrive.update({
+              where: { id: testDrive.id },
+              data: { googleEventId: eventId },
+            });
+          }
+        } catch (e) {
+          console.error("[GoogleCalendar:create] error:", e);
+        }
+      })();
+    }
 
     return NextResponse.json(testDrive, { status: 201 });
   } catch (error: unknown) {

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
 import { formatCurrency } from "@autoerebus/ui/lib/utils";
 import { FUEL_TYPE_LABELS } from "@autoerebus/types";
-import { Pencil, Trash2, AlertTriangle, Loader2, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Loader2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
 const STATUS_LABELS: Record<
   string,
@@ -33,10 +33,16 @@ interface Vehicle {
   specialBadge: boolean;
   specialBadgeText: string | null;
   externalSlug: string | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+  images?: { url: string }[];
   make: { name: string; slug: string };
   model: { name: string; slug: string };
   agent: { firstName: string; lastName: string } | null;
 }
+
+type SortColumn = "vehicle" | "brand" | "mileage" | "price" | "status" | "createdAt" | "updatedAt";
+type SortDir = "asc" | "desc";
 
 function getViewUrl(vehicle: Vehicle): string | null {
   switch (vehicle.brand) {
@@ -62,7 +68,69 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [sortCol, setSortCol] = useState<SortColumn>("createdAt");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const deletingVehicle = vehicles.find((v) => v.id === deleteId);
+
+  function toggleSort(col: SortColumn) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir("desc");
+    }
+  }
+
+  const sortedVehicles = useMemo(() => {
+    const arr = [...vehicles];
+    arr.sort((a, b) => {
+      let av: number | string = 0;
+      let bv: number | string = 0;
+      switch (sortCol) {
+        case "vehicle":
+          av = `${a.make.name} ${a.model.name} ${a.year}`;
+          bv = `${b.make.name} ${b.model.name} ${b.year}`;
+          break;
+        case "brand":
+          av = a.brand;
+          bv = b.brand;
+          break;
+        case "mileage":
+          av = a.mileage;
+          bv = b.mileage;
+          break;
+        case "price":
+          av = a.discountPrice || a.price;
+          bv = b.discountPrice || b.price;
+          break;
+        case "status":
+          av = a.status;
+          bv = b.status;
+          break;
+        case "createdAt":
+          av = new Date(a.createdAt).getTime();
+          bv = new Date(b.createdAt).getTime();
+          break;
+        case "updatedAt":
+          av = new Date(a.updatedAt).getTime();
+          bv = new Date(b.updatedAt).getTime();
+          break;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [vehicles, sortCol, sortDir]);
+
+  function SortIcon({ col }: { col: SortColumn }) {
+    if (sortCol !== col) return <ArrowUpDown className="ml-1 inline h-3 w-3 text-gray-500" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="ml-1 inline h-3 w-3 text-gray-900" />
+    ) : (
+      <ArrowDown className="ml-1 inline h-3 w-3 text-gray-900" />
+    );
+  }
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -86,17 +154,47 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b bg-muted/50">
-              <th className="px-4 py-3 text-left font-medium">Vehicul</th>
-              <th className="px-4 py-3 text-left font-medium">Brand</th>
-              <th className="px-4 py-3 text-left font-medium">Km</th>
-              <th className="px-4 py-3 text-left font-medium">Pret</th>
-              <th className="px-4 py-3 text-left font-medium">Status</th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("vehicle")} className="flex items-center hover:text-gray-900">
+                  Vehicul <SortIcon col="vehicle" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("brand")} className="flex items-center hover:text-gray-900">
+                  Brand <SortIcon col="brand" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("mileage")} className="flex items-center hover:text-gray-900">
+                  Km <SortIcon col="mileage" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("price")} className="flex items-center hover:text-gray-900">
+                  Pret <SortIcon col="price" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("status")} className="flex items-center hover:text-gray-900">
+                  Status <SortIcon col="status" />
+                </button>
+              </th>
               <th className="px-4 py-3 text-left font-medium">Agent</th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("createdAt")} className="flex items-center hover:text-gray-900">
+                  Adăugat <SortIcon col="createdAt" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium">
+                <button onClick={() => toggleSort("updatedAt")} className="flex items-center hover:text-gray-900">
+                  Modificat <SortIcon col="updatedAt" />
+                </button>
+              </th>
               <th className="px-4 py-3 text-right font-medium">Actiuni</th>
             </tr>
           </thead>
           <tbody>
-            {vehicles.map((vehicle) => {
+            {sortedVehicles.map((vehicle) => {
               const statusInfo = STATUS_LABELS[vehicle.status] ?? {
                 label: vehicle.status,
                 variant: "outline" as const,
@@ -108,9 +206,20 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                   onClick={() => router.push(`/inventory/${vehicle.id}/edit`)}
                 >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div>
-                        <p className="font-medium">
+                    <div className="flex items-center gap-3">
+                      {vehicle.images?.[0] ? (
+                        <img
+                          src={vehicle.images[0].url}
+                          alt={`${vehicle.make.name} ${vehicle.model.name}`}
+                          className="h-12 w-16 flex-shrink-0 rounded object-cover border border-gray-200"
+                        />
+                      ) : (
+                        <div className="flex h-12 w-16 flex-shrink-0 items-center justify-center rounded border border-gray-200 bg-gray-50 text-sm text-gray-500">
+                          —
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-medium truncate">
                           {vehicle.make.name} {vehicle.model.name} ({vehicle.year})
                         </p>
                         {vehicle.specialBadge && vehicle.specialBadgeText && (
@@ -155,6 +264,26 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                     {vehicle.agent
                       ? `${vehicle.agent.firstName} ${vehicle.agent.lastName}`
                       : "-"}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap"
+                    title={new Date(vehicle.createdAt).toLocaleString("ro-RO")}
+                  >
+                    {new Date(vehicle.createdAt).toLocaleDateString("ro-RO", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td
+                    className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap"
+                    title={new Date(vehicle.updatedAt).toLocaleString("ro-RO")}
+                  >
+                    {new Date(vehicle.updatedAt).toLocaleDateString("ro-RO", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    })}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div

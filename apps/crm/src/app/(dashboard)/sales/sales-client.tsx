@@ -328,6 +328,24 @@ function MoveDropdown({
   const [open, setOpen] = useState(false);
   const [pendingStage, setPendingStage] = useState<{ id: string; name: string } | null>(null);
   const [success, setSuccess] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; dropUp: boolean } | null>(null);
+
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 300;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const dropUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+      setDropdownPos({
+        top: dropUp ? rect.top - 4 : rect.bottom + 4,
+        left: Math.max(8, rect.right - 192), // 192px = w-48
+        dropUp,
+      });
+    } else {
+      setDropdownPos(null);
+    }
+  }, [open]);
 
   const filteredStages = stages
     .filter((s) => !s.brand || s.brand === brand)
@@ -370,6 +388,7 @@ function MoveDropdown({
   return (
     <div className="relative" onClick={(e) => e.stopPropagation()}>
       <button
+        ref={buttonRef}
         onClick={() => setOpen(!open)}
         className="flex items-center gap-1 rounded-md border px-2 py-1 text-sm font-medium hover:bg-muted transition-colors"
       >
@@ -377,10 +396,17 @@ function MoveDropdown({
         <ChevronDown className="h-3 w-3" />
       </button>
 
-      {open && (
+      {open && dropdownPos && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 bottom-full mb-1 z-50 w-48 rounded-md border bg-white shadow-lg py-1">
+          <div className="fixed inset-0 z-[60]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[70] w-48 rounded-md border bg-white shadow-lg py-1 max-h-[300px] overflow-y-auto"
+            style={{
+              top: dropdownPos.dropUp ? "auto" : dropdownPos.top,
+              bottom: dropdownPos.dropUp ? window.innerHeight - dropdownPos.top : "auto",
+              left: dropdownPos.left,
+            }}
+          >
             {filteredStages.map((s) => (
               <button
                 key={s.id}
@@ -1703,6 +1729,39 @@ function LeadDetailOverlay({
                   <div><span className="text-gray-500 text-sm">Sursa</span> <span className="block font-medium text-gray-900">{SOURCE_LABELS[lead.source] || lead.source}</span></div>
                   <div><span className="text-gray-500 text-sm">Creat</span> <span className="block font-medium text-gray-900">{formatDate(lead.createdAt)}</span></div>
                 </div>
+
+                {/* Row 1b: UTM Tracking (only if present) */}
+                {(() => {
+                  const notes = lead.notes || "";
+                  const trackMatch = notes.match(/📊\s*Tracking:\s*([^\n]+)/);
+                  if (!trackMatch) return null;
+                  const trackStr = trackMatch[1];
+                  const parts: Record<string, string> = {};
+                  trackStr.split(",").forEach((p: string) => {
+                    const [k, v] = p.split(":").map((s: string) => s.trim());
+                    if (k && v) parts[k.toLowerCase()] = v;
+                  });
+                  if (Object.keys(parts).length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-4 text-sm pt-2 border-t">
+                      {parts.source && (
+                        <div><span className="text-gray-500 text-sm">UTM Source</span> <span className="block font-medium text-gray-900">{parts.source}</span></div>
+                      )}
+                      {parts.medium && (
+                        <div><span className="text-gray-500 text-sm">Medium</span> <span className="block font-medium text-gray-900">{parts.medium}</span></div>
+                      )}
+                      {parts.campaign && (
+                        <div><span className="text-gray-500 text-sm">Campaign</span> <span className="block font-medium text-gray-900">{parts.campaign}</span></div>
+                      )}
+                      {parts.content && (
+                        <div><span className="text-gray-500 text-sm">Content</span> <span className="block font-medium text-gray-900">{parts.content}</span></div>
+                      )}
+                      {parts.term && (
+                        <div><span className="text-gray-500 text-sm">Term</span> <span className="block font-medium text-gray-900">{parts.term}</span></div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Row 2: Pipeline */}
                 <div className="flex items-center gap-2 pt-2 border-t">

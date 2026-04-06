@@ -5,6 +5,7 @@ import { Button } from "@autoerebus/ui";
 import { Input } from "@autoerebus/ui";
 import { Badge } from "@autoerebus/ui";
 import { X, Search, Edit2, Check, Calendar as CalendarIcon } from "lucide-react";
+import { useToast } from "@/components/toast-provider";
 
 interface Vehicle {
   id: string;
@@ -66,6 +67,7 @@ export default function BookingFormModal({
   onClose,
   onSuccess,
 }: Props) {
+  const toast = useToast();
   // Vehicle
   const [vehicleId, setVehicleId] = useState<string>(preselectedVehicle?.id || "");
   const [vehicleSearch, setVehicleSearch] = useState("");
@@ -260,7 +262,7 @@ export default function BookingFormModal({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Eroare la salvare");
+        toast.error(data.error || "Nu s-a putut salva modificarea", "Eroare salvare");
         return;
       }
 
@@ -272,9 +274,10 @@ export default function BookingFormModal({
             : b
         )
       );
+      toast.success("Modificare salvată");
       cancelEditBooking();
     } catch (e) {
-      setError("Eroare de rețea");
+      toast.error("Nu s-a putut conecta la server", "Eroare rețea");
     } finally {
       setSavingEdit(false);
     }
@@ -394,12 +397,18 @@ export default function BookingFormModal({
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Eroare la salvare");
+        // Show toast with title based on status
+        if (res.status === 409) {
+          toast.error(data.error || "Intervalul se suprapune cu altă rezervare", "Conflict rezervare");
+        } else {
+          toast.error(data.error || "Nu s-a putut crea rezervarea", "Eroare salvare");
+        }
         return;
       }
+      toast.success("Rezervarea a fost creată");
       onSuccess();
     } catch (e) {
-      setError("Eroare de rețea");
+      toast.error("Nu s-a putut conecta la server", "Eroare rețea");
     } finally {
       setSubmitting(false);
     }

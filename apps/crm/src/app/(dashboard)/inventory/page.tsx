@@ -55,6 +55,9 @@ export default async function InventoryPage({ searchParams }: PageProps) {
     specialBadge: boolean;
     specialBadgeText: string | null;
     externalSlug: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    images: { url: string }[];
     make: { name: string; slug: string };
     model: { name: string; slug: string };
     agent: { firstName: string; lastName: string } | null;
@@ -69,6 +72,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
           make: { select: { name: true, slug: true } },
           model: { select: { name: true, slug: true } },
           agent: { select: { firstName: true, lastName: true } },
+          images: {
+            take: 1,
+            orderBy: { order: "asc" },
+            select: { url: true },
+          },
         },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,

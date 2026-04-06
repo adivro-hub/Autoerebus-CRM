@@ -14,15 +14,11 @@ export async function findConflictingBooking(
     where: {
       vehicleId,
       id: excludeBookingId ? { not: excludeBookingId } : undefined,
-      status: { in: ["PENDING", "APPROVED"] },
-      OR: [
-        // New booking starts during existing
-        { startDate: { lte: startDate }, endDate: { gt: startDate } },
-        // New booking ends during existing
-        { startDate: { lt: endDate }, endDate: { gte: endDate } },
-        // Existing fully inside new
-        { startDate: { gte: startDate }, endDate: { lte: endDate } },
-      ],
+      // Include CONFLICTED too — car is still with the user until returned
+      status: { in: ["PENDING", "APPROVED", "CONFLICTED"] },
+      // Strict overlap: [startA, endA) overlaps [startB, endB) iff startA < endB AND endA > startB
+      startDate: { lt: endDate },
+      endDate: { gt: startDate },
     },
     include: {
       vehicle: { select: { title: true } },
