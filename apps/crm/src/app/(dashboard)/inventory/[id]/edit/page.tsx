@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/compone
 import { Button } from "@autoerebus/ui/components/button";
 import { Input } from "@autoerebus/ui/components/input";
 import { FUEL_TYPE_LABELS, TRANSMISSION_LABELS, BRAND_LABELS } from "@autoerebus/types";
-import { ArrowLeft, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, CheckCircle2, Upload, ExternalLink, Trash2 } from "lucide-react";
 import { ImageUploader, type UploadedImage } from "@/components/image-uploader";
+import { useToast } from "@/components/toast-provider";
 
 const CONDITION_OPTIONS = [
   { value: "NEW", label: "Nou" },
@@ -78,6 +79,20 @@ interface VehicleData {
   specialBadge: boolean;
   specialBadgeText: string | null;
   agentId: string | null;
+  autovitId: string | null;
+  autovitStatus: string | null;
+  autovitSyncedAt: string | null;
+  previousOwners: number | null;
+  registrationDate: string | null;
+  // Autovit extras
+  generation: string | null;
+  emissionStandard: string | null;
+  fuelConsumptionUrban: number | null;
+  fuelConsumptionExtraUrban: number | null;
+  fuelConsumptionCombined: number | null;
+  priceNegotiable: boolean;
+  noAccidents: boolean;
+  serviceRecord: boolean;
   images: { id: string; url: string; cloudinaryId: string | null; order: number }[];
 }
 
@@ -106,6 +121,78 @@ export default function EditVehiclePage() {
   const [equipmentCategories, setEquipmentCategories] = useState<{ id: string; name: string; autovitKey: string; items: { id: string; name: string; autovitKey: string }[] }[]>([]);
   const [selectedEquipment, setSelectedEquipment] = useState<Set<string>>(new Set());
   const [savingEquipment, setSavingEquipment] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const toast = useToast();
+
+  async function callAutovit(action: "publish" | "export-olx" | "activate" | "delete", confirmMsg: string, loadingLabel: string) {
+    if (!vehicle) return;
+    if (!confirm(confirmMsg)) return;
+    setActionBusy(loadingLabel);
+    setPublishing(true);
+    try {
+      const res = await fetch("/api/autovit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, vehicleIds: [vehicle.id] }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Eroare Autovit", "Autovit");
+        return;
+      }
+      const result = data.results?.[0];
+      if (result?.success) {
+        const stepsInfo = result.steps
+          ? result.steps.map((s: { name: string; ok: boolean; info?: string }) => `${s.ok ? "✓" : "✗"} ${s.name}${s.info ? ` (${s.info})` : ""}`).join(" · ")
+          : `ID ${result.autovitId}`;
+        toast.success(stepsInfo, loadingLabel);
+        const vRes = await fetch(`/api/vehicles/${id}`);
+        const vData = await vRes.json();
+        if (vData.success && vData.data) setVehicle(vData.data);
+      } else {
+        toast.error(result?.error || "Eroare necunoscută", "Autovit");
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Eroare de rețea", "Autovit");
+    } finally {
+      setPublishing(false);
+      setActionBusy(null);
+    }
+  }
+
+  function handlePublishAutovit() {
+    const isUpdate = !!vehicle?.autovitId;
+    return callAutovit(
+      "publish",
+      isUpdate ? "Actualizezi anunțul pe Autovit?" : "Publici această mașină ca anunț nou pe Autovit (draft)?",
+      isUpdate ? "Anunț actualizat" : "Anunț publicat"
+    );
+  }
+
+  function handleExportOlx() {
+    return callAutovit(
+      "export-olx",
+      "Adaugi anunțul și pe OLX (gratuit)? Trebuie apoi să-l activezi.",
+      "Export OLX"
+    );
+  }
+
+  function handleActivateAutovit() {
+    return callAutovit(
+      "activate",
+      "Activezi anunțul pe Autovit? (se aplică promoțiile din coadă, inclusiv OLX)",
+      "Anunț activat"
+    );
+  }
+
+  function handleDeleteAutovit() {
+    return callAutovit(
+      "delete",
+      "ATENȚIE: Ștergi definitiv anunțul de pe Autovit? Această acțiune nu poate fi anulată.",
+      "Anunț șters"
+    );
+  }
 
   // Load vehicle + reference data
   useEffect(() => {
@@ -176,8 +263,18 @@ export default function EditVehiclePage() {
           emissions: data.emissions ? parseInt(data.emissions as string, 10) : null,
           batteryCapacity: data.batteryCapacity ? parseFloat(data.batteryCapacity as string) : null,
           wltpRange: data.wltpRange ? parseInt(data.wltpRange as string, 10) : null,
+          previousOwners: data.previousOwners ? parseInt(data.previousOwners as string, 10) : null,
+          registrationDate: data.registrationDate || null,
+          generation: data.generation || null,
+          emissionStandard: data.emissionStandard || null,
+          fuelConsumptionUrban: data.fuelConsumptionUrban ? parseFloat(data.fuelConsumptionUrban as string) : null,
+          fuelConsumptionExtraUrban: data.fuelConsumptionExtraUrban ? parseFloat(data.fuelConsumptionExtraUrban as string) : null,
+          fuelConsumptionCombined: data.fuelConsumptionCombined ? parseFloat(data.fuelConsumptionCombined as string) : null,
           vatDeductible: data.vatDeductible === "on",
           availableFinancing: data.availableFinancing === "on",
+          priceNegotiable: data.priceNegotiable === "on",
+          noAccidents: data.noAccidents === "on",
+          serviceRecord: data.serviceRecord === "on",
           availableTestDrive: data.availableTestDrive === "on",
           specialBadge: data.specialBadge === "on",
           specialBadgeText: data.specialBadgeText || null,
@@ -476,6 +573,124 @@ export default function EditVehiclePage() {
               <Input label="Interior" name="interiorColor" defaultValue={vehicle.interiorColor ?? ""} />
               <Input label="Usi" name="doors" type="number" min={2} max={5} defaultValue={vehicle.doors ?? ""} />
               <Input label="Locuri" name="seats" type="number" min={2} max={9} defaultValue={vehicle.seats ?? ""} />
+              <Input
+                label="Data primei inmatriculari"
+                name="registrationDate"
+                type="date"
+                defaultValue={vehicle.registrationDate ? vehicle.registrationDate.slice(0, 10) : ""}
+              />
+              <Input
+                label="Proprietari anteriori"
+                name="previousOwners"
+                type="number"
+                min={0}
+                defaultValue={vehicle.previousOwners ?? ""}
+              />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Norma poluare</label>
+                <select
+                  name="emissionStandard"
+                  defaultValue={vehicle.emissionStandard ?? ""}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Selecteaza</option>
+                  <option value="euro-1">Euro 1</option>
+                  <option value="euro-2">Euro 2</option>
+                  <option value="euro-3">Euro 3</option>
+                  <option value="euro-4">Euro 4</option>
+                  <option value="euro-5">Euro 5</option>
+                  <option value="euro-6">Euro 6</option>
+                  <option value="non-euro">Non-euro</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Generatie</label>
+                <div className="flex gap-2">
+                  <input
+                    name="generation"
+                    defaultValue={vehicle.generation ?? ""}
+                    placeholder="ex: gen-ii-2017"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    readOnly
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const make = makes.find((m) => m.id === selectedMakeId);
+                        const model = models.find((m) => m.id === selectedModelId);
+                        const year = (document.querySelector('[name="year"]') as HTMLInputElement)?.value;
+                        if (!make || !model || !year) {
+                          alert("Selectează marcă, model și an");
+                          return;
+                        }
+                        const makeSlug = make.name.toLowerCase().replace(/\s+/g, "-");
+                        const modelSlug = model.name.toLowerCase().replace(/\s+/g, "-");
+                        const res = await fetch(`/api/autovit/generation?make=${makeSlug}&model=${modelSlug}&year=${year}`);
+                        const data = await res.json();
+                        if (data.detected) {
+                          const input = document.querySelector('[name="generation"]') as HTMLInputElement;
+                          if (input) input.value = data.detected;
+                          alert(`Generație detectată: ${data.detectedLabel}`);
+                        } else {
+                          alert("Nu s-a putut detecta generația automat");
+                        }
+                      } catch (e) {
+                        alert("Eroare la detecție: " + (e instanceof Error ? e.message : "unknown"));
+                      }
+                    }}
+                  >
+                    Auto
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Input
+                label="Consum urban (l/100km)"
+                name="fuelConsumptionUrban"
+                type="number"
+                step="0.1"
+                defaultValue={vehicle.fuelConsumptionUrban ?? ""}
+              />
+              <Input
+                label="Consum extraurban (l/100km)"
+                name="fuelConsumptionExtraUrban"
+                type="number"
+                step="0.1"
+                defaultValue={vehicle.fuelConsumptionExtraUrban ?? ""}
+              />
+              <Input
+                label="Consum combinat (l/100km)"
+                name="fuelConsumptionCombined"
+                type="number"
+                step="0.1"
+                defaultValue={vehicle.fuelConsumptionCombined ?? ""}
+              />
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-6">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="noAccidents"
+                  defaultChecked={vehicle.noAccidents}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Fara accidente
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="serviceRecord"
+                  defaultChecked={vehicle.serviceRecord}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Carte de service
+              </label>
             </div>
           </CardContent>
         </Card>
@@ -519,6 +734,15 @@ export default function EditVehiclePage() {
                   className="h-4 w-4 rounded border-input"
                 />
                 Disponibil pentru Finantare
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="priceNegotiable"
+                  defaultChecked={vehicle.priceNegotiable}
+                  className="h-4 w-4 rounded border-input"
+                />
+                Pret negociabil
               </label>
             </div>
           </CardContent>
@@ -654,6 +878,95 @@ export default function EditVehiclePage() {
               <CheckCircle2 className="h-4 w-4" />
               Salvat cu succes
             </div>
+          )}
+          {vehicle?.autovitId && (
+            <div className="flex items-center gap-2">
+              {(() => {
+                const s = vehicle.autovitStatus;
+                const cfg: Record<string, { label: string; cls: string }> = {
+                  active: { label: "Activ", cls: "bg-green-100 text-green-700" },
+                  unpaid: { label: "În așteptare", cls: "bg-amber-100 text-amber-700" },
+                  deactivated: { label: "Dezactivat", cls: "bg-gray-200 text-gray-700" },
+                };
+                const style = s && cfg[s] ? cfg[s] : { label: s || "Necunoscut", cls: "bg-gray-100 text-gray-600" };
+                return (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium ${style.cls}`}>
+                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                    Autovit: {style.label}
+                  </span>
+                );
+              })()}
+              <a
+                href={`https://www.autovit.ro/autoturisme/anunt/?ID=${vehicle.autovitId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-500 hover:text-gray-900 hover:underline flex items-center gap-1"
+              >
+                <ExternalLink className="h-3 w-3" />
+                ID {vehicle.autovitId}
+              </a>
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handlePublishAutovit}
+            disabled={publishing}
+            title="Creează sau actualizează anunțul pe Autovit (fără activare)"
+          >
+            {publishing && actionBusy?.includes("Anunț") ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {vehicle?.autovitId ? "Actualizează Autovit" : "Publică pe Autovit"}
+          </Button>
+
+          {vehicle?.autovitId && (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExportOlx}
+                disabled={publishing}
+                title="Adaugă anunțul și pe OLX.ro (gratuit). Funcționează doar pe anunțuri neactivate."
+              >
+                {publishing && actionBusy === "Export OLX" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Export OLX
+              </Button>
+              <Button
+                type="button"
+                onClick={handleActivateAutovit}
+                disabled={publishing}
+                title="Activează anunțul pe Autovit (aplică promoțiile din coadă, inclusiv OLX)"
+              >
+                {publishing && actionBusy === "Anunț activat" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                Activează
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDeleteAutovit}
+                disabled={publishing}
+                className="text-red-600 border-red-300 hover:bg-red-50"
+                title="Șterge definitiv anunțul de pe Autovit"
+              >
+                {publishing && actionBusy === "Anunț șters" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Șterge Autovit
+              </Button>
+            </>
           )}
           <Link href={`/inventory/${id}`}>
             <Button variant="outline" type="button">

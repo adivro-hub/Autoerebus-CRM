@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
     if (vehicle.brand === "AUTORULATE") {
       try {
         const autorutaleId = await pushVehicleToAutorulate(vehicle as any);
-        if (autorutaleId && !vehicle.autovitId) {
+        if (autorutaleId && !(vehicle as any).autorulateId) {
           await prisma.vehicle.update({
             where: { id: vehicle.id },
-            data: { autovitId: `autorulate:${autorutaleId}` },
+            data: { autorulateId: autorutaleId },
           });
         }
       } catch (err) {

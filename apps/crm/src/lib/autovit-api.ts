@@ -97,14 +97,14 @@ async function getAccessToken(): Promise<string> {
 
   const res = await fetch(`${BASE_URL}/oauth/token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      client_id: Number(clientId),
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      client_id: clientId,
       client_secret: clientSecret,
       grant_type: "password",
       username,
       password,
-    }),
+    }).toString(),
   });
 
   if (!res.ok) {
@@ -200,8 +200,70 @@ export async function activateAutovitAdvert(id: number): Promise<void> {
   }
 }
 
-export async function deactivateAutovitAdvert(id: number): Promise<void> {
-  const res = await autovitFetch(`/account/adverts/${id}/deactivate`, { method: "POST" });
+/**
+ * Apply a promotion (e.g. free OLX export = promotion_id 49) to an advert.
+ * Must be called BEFORE activation based on empirical testing.
+ */
+export async function applyPromotion(
+  advertId: number,
+  promotionIds: number[],
+  paymentType: "account" | "postpay" = "account"
+): Promise<void> {
+  const res = await autovitFetch(`/account/adverts/${advertId}/promotions/`, {
+    method: "POST",
+    body: JSON.stringify({
+      payment_type: paymentType,
+      promotion_ids: promotionIds,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Failed to apply promotion ${promotionIds.join(",")} on ${advertId} (${res.status}): ${err}`);
+  }
+}
+
+/**
+ * Check which promotions are available for an advert (including free export_olx).
+ * Returns a map of promotion code -> promotion details.
+ */
+export async function getAvailablePromotions(
+  advertId: number
+): Promise<Record<string, { promotion_id: string; promotion_code: string; promotion_name: string; price: number }>> {
+  const res = await autovitFetch(`/account/adverts/${advertId}/promotions/`);
+  if (!res.ok) return {};
+  const data = (await res.json()) as any;
+  const out: Record<string, any> = {};
+  for (const [code, info] of Object.entries(data.promotions || {})) {
+    const i = info as any;
+    out[code] = {
+      promotion_id: i.promotion_id,
+      promotion_code: i.promotion_code,
+      promotion_name: i.promotion_name,
+      price: i.payments?.account?.price ?? 0,
+    };
+  }
+  return out;
+}
+
+/**
+ * Deactivate an Autovit advert.
+ * Reason IDs (from Autovit docs):
+ *   1 = "Other" (default)
+ *   2 = "Ad sold on Autovit"
+ *   3 = "Ad sold elsewhere"
+ *   4 = "No longer for sale"
+ */
+export async function deactivateAutovitAdvert(
+  id: number,
+  reasonId: string = "1",
+  description: string = "Deactivated from CRM"
+): Promise<void> {
+  const res = await autovitFetch(`/account/adverts/${id}/deactivate`, {
+    method: "POST",
+    body: JSON.stringify({
+      reason: { id: reasonId, description },
+    }),
+  });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`Failed to deactivate advert ${id} (${res.status}): ${err}`);
@@ -262,6 +324,100 @@ export async function getCategoryModels(categoryId: number, makeCode: string): P
   return res.json();
 }
 
+/**
+ * Get all generations for a make+model on Autovit.
+ * Returns mapping of generation code to label (e.g. "gen-ii-2017" -> "II [2017 - Prezent]")
+ */
+export async function getGenerations(
+  makeCode: string,
+  modelCode: string
+): Promise<Record<string, string>> {
+  const res = await autovitFetch(`/categories/29/models/${makeCode}/generations/${modelCode}`);
+  if (!res.ok) return {};
+  const data = (await res.json()) as { options?: Record<string, { ro?: string; en?: string }> };
+  const out: Record<string, string> = {};
+  for (const [key, val] of Object.entries(data.options || {})) {
+    out[key] = val.ro || val.en || key;
+  }
+  return out;
+}
+
+/**
+ * Get all versions for a make+model (optionally filtered by generation).
+ */
+export async function getVersions(
+  makeCode: string,
+  modelCode: string,
+  generationCode?: string
+): Promise<Record<string, string>> {
+  const path = generationCode
+    ? `/categories/29/models/${makeCode}/versions/${modelCode}?generation=${generationCode}`
+    : `/categories/29/models/${makeCode}/versions/${modelCode}`;
+  const res = await autovitFetch(path);
+  if (!res.ok) return {};
+  const data = (await res.json()) as { options?: Record<string, { ro?: string; en?: string }> };
+  const out: Record<string, string> = {};
+  for (const [key, val] of Object.entries(data.options || {})) {
+    out[key] = val.ro || val.en || key;
+  }
+  return out;
+}
+
+/**
+ * Find best matching version code given a query string (e.g. part of CRM title).
+ * Uses word overlap scoring — higher score = better match.
+ */
+export function findBestVersion(
+  query: string,
+  versions: Record<string, string>
+): string | null {
+  const normalize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .split(" ")
+      .filter((w) => w.length > 0 && w !== "other");
+
+  const queryWords = new Set(normalize(query));
+  if (queryWords.size === 0) return null;
+
+  let best: { code: string; score: number } | null = null;
+  for (const [code, label] of Object.entries(versions)) {
+    if (code === "other") continue;
+    const labelWords = new Set(normalize(label));
+    if (labelWords.size === 0) continue;
+    let shared = 0;
+    for (const w of queryWords) if (labelWords.has(w)) shared++;
+    // Score: prefer high overlap ratio against the label (avoid matching very long labels with only 1 shared word)
+    const score = shared / Math.max(labelWords.size, queryWords.size);
+    if (!best || score > best.score) best = { code, score };
+  }
+  // Require at least 50% overlap to avoid bad matches
+  return best && best.score >= 0.5 ? best.code : null;
+}
+
+/**
+ * Auto-detect generation code for a vehicle year.
+ * Parses year range from generation label like "II [2017 - Prezent]" or "I [2008 - 2017]".
+ */
+export function detectGenerationCode(
+  year: number,
+  generations: Record<string, string>
+): string | null {
+  for (const [code, label] of Object.entries(generations)) {
+    // Match "[YYYY - YYYY]" or "[YYYY - Prezent]"
+    const match = label.match(/\[(\d{4})\s*-\s*(\d{4}|Prezent)\]/i);
+    if (!match) continue;
+    const startYear = Number(match[1]);
+    const endYear = match[2].toLowerCase() === "prezent" ? new Date().getFullYear() + 1 : Number(match[2]);
+    if (year >= startYear && year <= endYear) {
+      return code;
+    }
+  }
+  return null;
+}
+
 // ─── Stats ──────────────────────────────────────────────
 
 export async function getAdvertStats(id: number): Promise<unknown> {
@@ -311,18 +467,30 @@ const BODY_TYPE_MAP: Record<string, string> = {
   UTILITARA: "van",
 };
 
+// Valid Autovit color codes (from /categories/29 → color param options):
+// white, black, gray, silver, blue, red, green, yellow-gold, orange, brown, bej, other
 const COLOR_MAP: Record<string, string> = {
-  Alb: "white",
-  Negru: "black",
-  Gri: "grey",
-  Argint: "silver",
-  Albastru: "blue",
-  Rosu: "red",
-  Verde: "green",
-  Galben: "yellow",
-  Portocaliu: "orange",
-  Maro: "brown",
-  Bej: "beige",
+  alb: "white",
+  negru: "black",
+  gri: "gray",
+  grii: "gray",
+  argint: "silver",
+  argintiu: "silver",
+  albastru: "blue",
+  rosu: "red",
+  roșu: "red",
+  verde: "green",
+  galben: "yellow-gold",
+  auriu: "yellow-gold",
+  portocaliu: "orange",
+  maro: "brown",
+  bej: "bej",
+  // Colors without direct Autovit match map to "other"
+  mov: "other",
+  violet: "other",
+  bordo: "other",
+  bordeaux: "other",
+  turcoaz: "other",
 };
 
 export interface CrmVehicleForAutovit {
@@ -344,6 +512,20 @@ export interface CrmVehicleForAutovit {
   drivetrain: string | null;
   color: string | null;
   doors: number | null;
+  seats: number | null;
+  emissions: number | null;
+  registrationDate: string | Date | null;
+  previousOwners: number | null;
+  vatDeductible: boolean;
+  availableFinancing: boolean;
+  priceNegotiable: boolean;
+  noAccidents: boolean;
+  serviceRecord: boolean;
+  generation: string | null;
+  emissionStandard: string | null;
+  fuelConsumptionUrban: number | null;
+  fuelConsumptionExtraUrban: number | null;
+  fuelConsumptionCombined: number | null;
   description: string | null;
   make: { name: string; slug: string };
   model: { name: string; slug: string };
@@ -352,10 +534,10 @@ export interface CrmVehicleForAutovit {
   autovitId: string | null;
 }
 
-export function mapCrmToAutovit(
+export async function mapCrmToAutovit(
   vehicle: CrmVehicleForAutovit,
   config: {
-    regionId: number;
+    regionId?: number;
     cityId: number;
     districtId?: number;
     contactPerson?: string;
@@ -363,7 +545,7 @@ export function mapCrmToAutovit(
     latitude?: number;
     longitude?: number;
   }
-): AutovitCreateAdvertPayload {
+): Promise<AutovitCreateAdvertPayload> {
   const makeSlug = vehicle.make.slug.toLowerCase();
   const modelSlug = vehicle.model.slug.toLowerCase();
   const price = vehicle.discountPrice || vehicle.price || 0;
@@ -378,26 +560,65 @@ export function mapCrmToAutovit(
     ((isElectric || isPHEV) && vehicle.batteryCapacity ? `, baterie ${vehicle.batteryCapacity} kWh` : "") +
     ((isElectric || isPHEV) && vehicle.wltpRange ? `, autonomie ${vehicle.wltpRange} km (WLTP)` : "");
 
+  const isUsed = vehicle.condition !== "NEW";
+  // Price type: "arranged" = negociabil, "price" = fixed.
+  // Used cars are always negotiable by default regardless of CRM field.
+  const priceType = isUsed || vehicle.priceNegotiable ? "arranged" : "price";
+
   const payload: AutovitCreateAdvertPayload = {
     title: vehicle.title || `${vehicle.make.name} ${vehicle.model.name} ${vehicle.year}`,
     description,
     category_id: 29, // Autoturisme
-    region_id: config.regionId,
+    region_id: config.regionId || 0,
     city_id: config.cityId,
-    new_used: vehicle.condition === "NEW" ? "new" : "used",
+    new_used: isUsed ? "used" : "new",
     advertiser_type: "business",
     params: {
       year: vehicle.year,
       make: makeSlug,
       model: modelSlug,
       price: {
-        0: "price",
+        0: priceType,
         1: price,
         currency: "EUR",
         gross_net: "gross",
       },
+      // Required checkbox — default "not imported" (car bought/sold in RO)
+      is_imported_car: 0,
     },
   };
+
+  // Dealer warranty for used cars: 12 months (Autovit field is input type — expects string)
+  // 20.000 km limit is mentioned in the description since Autovit dealer warranty has no km field
+  if (isUsed) {
+    payload.params.vendors_warranty_valid_until_date = "12";
+  }
+
+  // Version: fetch valid options from Autovit and fuzzy-match from CRM title
+  if (vehicle.title) {
+    const makeName = vehicle.make.name;
+    const modelName = vehicle.model.name;
+    // Strip make + model from title to get version query
+    let versionQuery = vehicle.title;
+    const makeRegex = new RegExp(`${makeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "i");
+    versionQuery = versionQuery.replace(makeRegex, "");
+    const modelRegex = new RegExp(`${modelName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*`, "i");
+    versionQuery = versionQuery.replace(modelRegex, "");
+    versionQuery = versionQuery.trim();
+
+    if (versionQuery) {
+      try {
+        const generationCode = payload.params.generation as string | undefined;
+        const versions = await getVersions(makeSlug, modelSlug, generationCode);
+        const bestVersion = findBestVersion(versionQuery, versions);
+        if (bestVersion) {
+          payload.params.version = bestVersion;
+        }
+      } catch {
+        // Version endpoint may fail — not blocking
+      }
+    }
+  }
 
   if (config.districtId) payload.district_id = config.districtId;
 
@@ -421,6 +642,47 @@ export function mapCrmToAutovit(
   if (!isElectric && vehicle.engineSize) payload.params.engine_capacity = String(vehicle.engineSize);
   if (vehicle.horsepower) payload.params.engine_power = String(vehicle.horsepower);
   if (vehicle.doors) payload.params.door_count = vehicle.doors;
+  if (vehicle.seats) payload.params.seat_count = vehicle.seats;
+  if (vehicle.emissions) payload.params.co2_emissions = vehicle.emissions;
+  if (vehicle.previousOwners != null) payload.params.previous_owners = vehicle.previousOwners;
+
+  // First registration date — Autovit field is "date_registration"
+  if (vehicle.registrationDate) {
+    const d = typeof vehicle.registrationDate === "string"
+      ? new Date(vehicle.registrationDate)
+      : vehicle.registrationDate;
+    if (!isNaN(d.getTime())) {
+      payload.params.date_registration = d.toISOString().slice(0, 10);
+    }
+  }
+
+  // Generation: use explicit value or auto-detect from Autovit API based on year
+  if (vehicle.generation) {
+    payload.params.generation = vehicle.generation;
+  } else {
+    try {
+      const generations = await getGenerations(makeSlug, modelSlug);
+      const genCode = detectGenerationCode(vehicle.year, generations);
+      if (genCode) payload.params.generation = genCode;
+    } catch {
+      // Generation endpoint may fail — not blocking
+    }
+  }
+
+  // Pollution standard (Euro 5/6)
+  if (vehicle.emissionStandard) payload.params.pollution_standard = vehicle.emissionStandard;
+
+  // Fuel consumption (l/100km) — exact Autovit field names
+  if (vehicle.fuelConsumptionUrban) payload.params.urban_consumption = String(vehicle.fuelConsumptionUrban);
+  if (vehicle.fuelConsumptionExtraUrban) payload.params.extra_urban_consumption = String(vehicle.fuelConsumptionExtraUrban);
+  if (vehicle.fuelConsumptionCombined) payload.params.combined_consumption = String(vehicle.fuelConsumptionCombined);
+
+  // Required status checkboxes (derived from CRM)
+  // Note: "price_negotiable" does NOT exist in Autovit API — stored in CRM for internal use only
+  payload.params.vat = vehicle.vatDeductible ? 1 : 0;
+  payload.params.financial_option = vehicle.availableFinancing ? 1 : 0;
+  if (vehicle.noAccidents) payload.params.no_accident = 1;
+  if (vehicle.serviceRecord) payload.params.service_record = 1;
 
   // Electric / PHEV specific params
   if ((isElectric || isPHEV) && vehicle.batteryCapacity) {

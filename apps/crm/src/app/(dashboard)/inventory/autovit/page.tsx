@@ -16,6 +16,7 @@ interface Vehicle {
   brand: string;
   vin: string | null;
   autovitId: string | null;
+  autovitStatus?: string | null;
   autovitSyncedAt: string | null;
   make: { name: string };
   model: { name: string };
@@ -39,6 +40,7 @@ export default function AutovitPage() {
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [results, setResults] = useState<ActionResult[] | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -54,6 +56,18 @@ export default function AutovitPage() {
     }
     setLoading(false);
   }, [filter, search]);
+
+  const refreshStatuses = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const res = await fetch("/api/autovit?action=refresh-statuses");
+      const data = await res.json();
+      if (data.success) fetchVehicles();
+    } catch {
+      console.error("Failed to refresh statuses");
+    }
+    setRefreshing(false);
+  }, [fetchVehicles]);
 
   useEffect(() => {
     fetch("/api/autovit?action=status")
@@ -186,12 +200,20 @@ export default function AutovitPage() {
           </button>
         </div>
 
+        <button
+          onClick={refreshStatuses}
+          disabled={refreshing || loading}
+          className="ml-auto h-8 rounded-md border border-gray-300 bg-white px-3 text-sm hover:bg-gray-50 disabled:opacity-50"
+          title="Sincronizează statusurile de pe Autovit"
+        >
+          {refreshing ? "Se sincronizează..." : "↻ Actualizează statusuri"}
+        </button>
         <input
           type="text"
           placeholder="Caută..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="ml-auto h-8 w-48 rounded-md border px-2 text-sm"
+          className="h-8 w-48 rounded-md border px-2 text-sm"
         />
       </div>
 
@@ -333,15 +355,24 @@ export default function AutovitPage() {
                   </td>
                   <td className="p-2">
                     {v.autovitId ? (
-                      <div>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-sm text-green-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                          Publicat
-                        </span>
-                        <div className="text-sm text-gray-500 mt-0.5">
-                          ID: {v.autovitId}
-                        </div>
-                      </div>
+                      (() => {
+                        const s = v.autovitStatus;
+                        const cfg: Record<string, { label: string; cls: string; dotCls: string }> = {
+                          active: { label: "Activ", cls: "bg-green-100 text-green-700", dotCls: "bg-green-500" },
+                          unpaid: { label: "În așteptare", cls: "bg-amber-100 text-amber-700", dotCls: "bg-amber-500" },
+                          deactivated: { label: "Dezactivat", cls: "bg-gray-200 text-gray-700", dotCls: "bg-gray-500" },
+                        };
+                        const style = s && cfg[s] ? cfg[s] : { label: "Publicat", cls: "bg-blue-100 text-blue-700", dotCls: "bg-blue-500" };
+                        return (
+                          <div>
+                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm ${style.cls}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${style.dotCls}`} />
+                              {style.label}
+                            </span>
+                            <div className="text-sm text-gray-500 mt-0.5">ID: {v.autovitId}</div>
+                          </div>
+                        );
+                      })()
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-sm text-gray-500">
                         <span className="h-1.5 w-1.5 rounded-full bg-gray-400" />

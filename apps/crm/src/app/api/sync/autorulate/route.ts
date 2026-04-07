@@ -9,7 +9,7 @@ import {
   type AutorutaleCar,
 } from "@/lib/autorulate-db";
 
-type ExistingVehicle = { id: string; vin: string | null; autovitId: string | null; updatedAt: Date };
+type ExistingVehicle = { id: string; vin: string | null; autorulateId: number | null; autovitId: string | null; updatedAt: Date };
 
 // ─── Field Mappings ─────────────────────────────────────
 
@@ -139,7 +139,7 @@ export async function GET() {
     // Get existing synced cars (by VIN match or autovitId storing autorulate ID)
     const existingVehicles = await prisma.vehicle.findMany({
       where: { brand: "AUTORULATE" },
-      select: { id: true, vin: true, autovitId: true, updatedAt: true },
+      select: { id: true, vin: true, autorulateId: true, autovitId: true, updatedAt: true },
     });
 
     const existingByVin = new Map<string, ExistingVehicle>(
@@ -147,8 +147,8 @@ export async function GET() {
     );
     const existingByAutorutaleId = new Map<string, ExistingVehicle>(
       existingVehicles
-        .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
-        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v] as [string, ExistingVehicle])
+        .filter((v: ExistingVehicle) => v.autorulateId != null)
+        .map((v: ExistingVehicle) => [String(v.autorulateId), v] as [string, ExistingVehicle])
     );
 
     const newCars: AutorutaleCar[] = [];
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
     // Get existing CRM vehicles
     const existingVehicles = await prisma.vehicle.findMany({
       where: { brand: "AUTORULATE" },
-      select: { id: true, vin: true, autovitId: true, updatedAt: true },
+      select: { id: true, vin: true, autorulateId: true, autovitId: true, updatedAt: true },
     });
 
     const existingByVin = new Map<string, ExistingVehicle>(
@@ -279,8 +279,8 @@ export async function POST(request: NextRequest) {
     );
     const existingByAutorutaleId = new Map<string, ExistingVehicle>(
       existingVehicles
-        .filter((v: ExistingVehicle) => v.autovitId?.startsWith("autorulate:"))
-        .map((v: ExistingVehicle) => [v.autovitId!.replace("autorulate:", ""), v] as [string, ExistingVehicle])
+        .filter((v: ExistingVehicle) => v.autorulateId != null)
+        .map((v: ExistingVehicle) => [String(v.autorulateId), v] as [string, ExistingVehicle])
     );
 
     let imported = 0;
@@ -349,7 +349,7 @@ export async function POST(request: NextRequest) {
         registrationDate: car.registrationDate
           ? new Date(car.registrationDate)
           : null,
-        autovitId: `autorulate:${car.id}`,
+        autorulateId: car.id,
         autovitSyncedAt: new Date(),
       };
 

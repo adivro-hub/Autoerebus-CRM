@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       const vehicle = await prisma.vehicle.findFirst({
         where: {
           brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
-          autovitId: `autorulate:${externalCarId}`,
+          autorulateId: Number(externalCarId),
         },
         select: { id: true },
       });

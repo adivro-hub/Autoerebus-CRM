@@ -351,6 +351,18 @@ model Vehicle {
   previousOwners   Int?
   featured         Boolean          @default(false)
 
+  // Autovit-specific extra fields
+  generation              String?  // Autovit generation code (e.g. "gen-ii-2017")
+  emissionStandard        String?  // Pollution standard: euro_5, euro_6, euro_6d, etc.
+  fuelConsumptionUrban    Float?   // l/100km urban
+  fuelConsumptionExtraUrban Float? // l/100km extra-urban
+  fuelConsumptionCombined Float?   // l/100km combined
+
+  // Status checkboxes
+  priceNegotiable  Boolean @default(false)
+  noAccidents      Boolean @default(false)
+  serviceRecord    Boolean @default(false)
+
   // Test drive
   availableTestDrive Boolean        @default(false)
 
@@ -363,7 +375,9 @@ model Vehicle {
 
   // External sync
   externalSlug     String?
-  autovitId        String?
+  autorulateId     Int?     // Autorulate source car ID (for cars imported from rulate)
+  autovitId        String?  // Autovit published advert ID (numeric, after publish)
+  autovitStatus    String?  // unpaid, active, deactivated, etc.
   autovitSyncedAt  DateTime?
 
   createdAt DateTime @default(now())

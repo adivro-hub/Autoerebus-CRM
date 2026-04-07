@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@autoerebus/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui";
-import { Users, Mail, UsersRound, Calendar as CalendarIcon } from "lucide-react";
+import { Users, Mail, UsersRound, Calendar as CalendarIcon, Car } from "lucide-react";
 import GoogleConnectButton from "./google-connect-button";
 
 export default async function SettingsPage({
@@ -14,7 +14,7 @@ export default async function SettingsPage({
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const role = (session.user as any).role;
+  const role = (session.user as any).role as string;
   const isSuperAdmin = role === "SUPER_ADMIN";
 
   const params = await searchParams;
@@ -32,6 +32,16 @@ export default async function SettingsPage({
       title: "Template-uri notificări",
       description: "Editează mesajele pentru email și SMS",
     },
+    ...(isSuperAdmin || role === "ADMIN"
+      ? [
+          {
+            href: "/settings/autovit",
+            icon: Car,
+            title: "Autovit — setări dealer",
+            description: "Configurație globală pentru publicarea anunțurilor pe Autovit (oraș, contact, coordonate)",
+          },
+        ]
+      : []),
     ...(isSuperAdmin
       ? [
           {

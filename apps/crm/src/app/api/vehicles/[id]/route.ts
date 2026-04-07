@@ -56,8 +56,8 @@ export async function PATCH(
       where: { id },
       data: {
         title: body.title || null,
-        makeId: body.makeId,
-        modelId: body.modelId,
+        make: { connect: { id: body.makeId } },
+        model: { connect: { id: body.modelId } },
         year: body.year,
         mileage: body.mileage ?? 0,
         fuelType: body.fuelType,
@@ -78,6 +78,16 @@ export async function PATCH(
         currency: body.currency || "EUR",
         vatDeductible: body.vatDeductible ?? false,
         availableFinancing: body.availableFinancing ?? false,
+        priceNegotiable: body.priceNegotiable ?? false,
+        noAccidents: body.noAccidents ?? false,
+        serviceRecord: body.serviceRecord ?? false,
+        previousOwners: body.previousOwners ?? null,
+        registrationDate: body.registrationDate ? new Date(body.registrationDate) : null,
+        generation: body.generation || null,
+        emissionStandard: body.emissionStandard || null,
+        fuelConsumptionUrban: body.fuelConsumptionUrban ?? null,
+        fuelConsumptionExtraUrban: body.fuelConsumptionExtraUrban ?? null,
+        fuelConsumptionCombined: body.fuelConsumptionCombined ?? null,
         condition: body.condition,
         status: body.status,
         brand: body.brand,
@@ -86,7 +96,9 @@ export async function PATCH(
         availableTestDrive: body.availableTestDrive ?? false,
         specialBadge: body.specialBadge ?? false,
         specialBadgeText: body.specialBadgeText || null,
-        agentId: body.agentId || null,
+        agent: body.agentId
+          ? { connect: { id: body.agentId } }
+          : { disconnect: true },
       },
     });
 

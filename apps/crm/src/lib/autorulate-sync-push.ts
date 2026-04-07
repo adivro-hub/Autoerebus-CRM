@@ -90,6 +90,7 @@ interface CrmVehicle {
   availableTestDrive: boolean;
   previousOwners: number | null;
   registrationDate: Date | null;
+  autorulateId: number | null;
   autovitId: string | null;
   make: { name: string; slug: string };
   model: { name: string; slug: string };
@@ -99,9 +100,8 @@ interface CrmVehicle {
 export async function pushVehicleToAutorulate(vehicle: CrmVehicle) {
   if (vehicle.brand !== "AUTORULATE") return;
 
-  const autorutaleId = vehicle.autovitId?.startsWith("autorulate:")
-    ? parseInt(vehicle.autovitId.replace("autorulate:", ""), 10)
-    : null;
+  // Use dedicated autorulateId field (autovitId is now for real Autovit IDs only)
+  const autorutaleId = (vehicle as any).autorulateId ?? null;
 
   // Resolve make ID in Autorulate
   const makeResult = await autorutalePool.query(
