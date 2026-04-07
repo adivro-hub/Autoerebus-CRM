@@ -23,6 +23,7 @@ import {
   CarFront,
 } from "lucide-react";
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { cn } from "@autoerebus/ui/lib/utils";
 import { BrandSwitcher, useBrand } from "./brand-switcher";
 
@@ -58,6 +59,20 @@ const NAV_ITEMS: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const { selectedBrand } = useBrand();
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const userBrands: string[] = ((session?.user as any)?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
+  const hasService = !isRestricted || userBrands.includes("SERVICE");
+  const isAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+
+  // Filter nav items based on user permissions
+  const navItems = NAV_ITEMS.filter((item) => {
+    if ((item.href === "/service" || item.href === "/claims") && !hasService) return false;
+    if (item.href === "/users" && !isAdmin) return false;
+    return true;
+  });
+
   const [collapsed, setCollapsed] = useState(false);
 
   // Append brand param to nav links
@@ -119,7 +134,7 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3 scrollbar-thin">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const isActive =
             item.children
               ? pathname.startsWith(item.href)

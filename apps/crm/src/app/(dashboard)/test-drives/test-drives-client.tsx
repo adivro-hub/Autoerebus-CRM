@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CustomerOverlay } from "@/components/customer-overlay";
 import { useToast } from "@/components/toast-provider";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -101,6 +102,14 @@ export default function TestDrivesClient({
 }) {
   const toast = useToast();
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || "AGENT";
+  const userPermissions: string[] = ((session?.user as any)?.permissions as string[]) || [];
+  const canApproveTD =
+    userRole === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRole === "MANAGER" ||
+    (userRole === "AGENT" && userPermissions.includes("TEST_DRIVE_APPROVE"));
 
   async function goToLead(testDriveId: string) {
     try {
@@ -625,14 +634,16 @@ export default function TestDrivesClient({
                         {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        <button
-                          onClick={() => handleStatusChange(td.id, "CONFIRMED")}
-                          className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
-                          title="Confirmă"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                          <span className="text-sm font-medium hidden sm:inline">Confirmă</span>
-                        </button>
+                        {canApproveTD && (
+                          <button
+                            onClick={() => handleStatusChange(td.id, "CONFIRMED")}
+                            className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                            title="Confirmă"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                            <span className="text-sm font-medium hidden sm:inline">Confirmă</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => openReschedule(td)}
                           className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
@@ -964,7 +975,7 @@ export default function TestDrivesClient({
                                     · {td.duration} min
                                   </span>
                                   <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                    {td.status === "SCHEDULED" && (
+                                    {td.status === "SCHEDULED" && canApproveTD && (
                                       <button
                                         onClick={() => handleStatusChange(td.id, "CONFIRMED")}
                                         className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -455,6 +456,14 @@ function LeadCard({
   const [tdLoading, setTdLoading] = useState(false);
   const [tdFeedback, setTdFeedback] = useState("");
   const [tdNewDate, setTdNewDate] = useState("");
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role || "AGENT";
+  const userPermissions: string[] = ((session?.user as any)?.permissions as string[]) || [];
+  const canApproveTD =
+    userRole === "SUPER_ADMIN" ||
+    userRole === "ADMIN" ||
+    userRole === "MANAGER" ||
+    (userRole === "AGENT" && userPermissions.includes("TEST_DRIVE_APPROVE"));
 
   async function handleTdAction() {
     if (!testDrive) return;
@@ -552,14 +561,16 @@ function LeadCard({
                 {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} — {new Date(testDrive.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
               </span>
               <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                <button
-                  onClick={() => setTdAction("confirm")}
-                  className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
-                  title="Confirmă programarea"
-                >
-                  <Check className="h-3.5 w-3.5" />
-                  <span className="text-sm font-medium">Confirmă</span>
-                </button>
+                {canApproveTD && (
+                  <button
+                    onClick={() => setTdAction("confirm")}
+                    className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                    title="Confirmă programarea"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    <span className="text-sm font-medium">Confirmă</span>
+                  </button>
+                )}
                 <button
                   onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
                   className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"

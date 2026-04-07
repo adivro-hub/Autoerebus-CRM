@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { BRAND_LABELS, type BrandType } from "@autoerebus/types";
 
 type BrandFilter = BrandType | "ALL";
@@ -9,11 +10,13 @@ type BrandFilter = BrandType | "ALL";
 interface BrandContextValue {
   selectedBrand: BrandFilter;
   setSelectedBrand: (brand: BrandFilter) => void;
+  allowedBrands: string[]; // empty array = all brands allowed
 }
 
 const BrandContext = createContext<BrandContextValue>({
   selectedBrand: "ALL",
   setSelectedBrand: () => {},
+  allowedBrands: [],
 });
 
 export function useBrand() {
@@ -34,6 +37,14 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const { data: session } = useSession();
+
+  // Get user's allowed brands from session (empty = all allowed)
+  const userBrands = ((session?.user as any)?.brands as string[]) || [];
+  const userRole = (session?.user as any)?.role;
+  // Super admin sees all brands; others restricted by their brands array
+  const allowedBrands = userRole === "SUPER_ADMIN" ? [] : userBrands;
+  const isRestricted = allowedBrands.length > 0;
 
   // Initialize from URL param, then localStorage, then "ALL"
   const urlBrand = searchParams.get("brand") as BrandFilter | null;
@@ -49,8 +60,18 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     setInitialized(true);
   }, []);
 
-  // If URL has brand param, sync to storage; otherwise use stored value
-  const selectedBrand = urlBrand || storedBrand;
+  // If user is restricted to a single brand, force-select it
+  let selectedBrand: BrandFilter = urlBrand || storedBrand;
+  if (isRestricted) {
+    if (allowedBrands.length === 1) {
+      selectedBrand = allowedBrands[0] as BrandFilter;
+    } else if (selectedBrand !== "ALL" && !allowedBrands.includes(selectedBrand)) {
+      // User picked a brand they don't have access to → reset
+      selectedBrand = allowedBrands[0] as BrandFilter;
+    } else if (selectedBrand === "ALL") {
+      selectedBrand = allowedBrands[0] as BrandFilter;
+    }
+  }
 
   // On first load, if no URL brand but stored brand exists, update URL
   useEffect(() => {
@@ -88,24 +109,30 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <BrandContext.Provider value={{ selectedBrand, setSelectedBrand }}>
+    <BrandContext.Provider value={{ selectedBrand, setSelectedBrand, allowedBrands }}>
       {children}
     </BrandContext.Provider>
   );
 }
 
 export function BrandSwitcher() {
-  const { selectedBrand, setSelectedBrand } = useBrand();
+  const { selectedBrand, setSelectedBrand, allowedBrands } = useBrand();
   const current = BRAND_OPTIONS.find((o) => o.value === selectedBrand);
+  const isRestricted = allowedBrands.length > 0;
+  const visibleOptions = isRestricted
+    ? BRAND_OPTIONS.filter((o) => o.value !== "ALL" && allowedBrands.includes(o.value))
+    : BRAND_OPTIONS;
+  const isLocked = isRestricted && allowedBrands.length === 1;
 
   return (
     <div className="relative">
       <select
         value={selectedBrand}
         onChange={(e) => setSelectedBrand(e.target.value as BrandFilter)}
-        className="h-9 appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+        disabled={isLocked}
+        className="h-9 appearance-none rounded-md border border-input bg-background pl-8 pr-8 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-70"
       >
-        {BRAND_OPTIONS.map((option) => (
+        {visibleOptions.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>

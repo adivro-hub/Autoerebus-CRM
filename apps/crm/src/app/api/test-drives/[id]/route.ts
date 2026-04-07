@@ -22,6 +22,26 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Check permission for confirming a test drive
+    // Roles MANAGER, ADMIN, SUPER_ADMIN can always confirm
+    // AGENT needs the TEST_DRIVE_APPROVE permission
+    // RECEPTION cannot confirm
+    if (body.status === "CONFIRMED" && existing.status !== "CONFIRMED") {
+      const role = (session.user as any).role;
+      const permissions: string[] = ((session.user as any).permissions as string[]) || [];
+      const canApprove =
+        role === "SUPER_ADMIN" ||
+        role === "ADMIN" ||
+        role === "MANAGER" ||
+        (role === "AGENT" && permissions.includes("TEST_DRIVE_APPROVE"));
+      if (!canApprove) {
+        return NextResponse.json(
+          { error: "Nu ai permisiunea de a aproba test drive-uri. Contactează un manager." },
+          { status: 403 }
+        );
+      }
+    }
+
     const testDrive = await prisma.testDrive.update({
       where: { id },
       data: {

@@ -5,6 +5,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { Button } from "@autoerebus/ui/components/button";
 import { BRAND_LABELS } from "@autoerebus/types";
 import { Search, X } from "lucide-react";
+import { useBrand } from "@/components/brand-switcher";
 
 const STATUS_OPTIONS = [
   { value: "", label: "Toate statusurile" },
@@ -23,6 +24,12 @@ export function InventoryFilters() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { allowedBrands } = useBrand();
+  const isRestricted = allowedBrands.length > 0;
+  const isLockedToOne = isRestricted && allowedBrands.length === 1;
+  const visibleBrandOptions = isRestricted
+    ? BRAND_OPTIONS.filter((o) => o.value === "" || allowedBrands.includes(o.value))
+    : BRAND_OPTIONS;
   const [searchValue, setSearchValue] = useState(
     searchParams.get("search") ?? ""
   );
@@ -76,17 +83,19 @@ export function InventoryFilters() {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <select
-        value={activeBrand}
-        onChange={(e) => setFilter("brand", e.target.value)}
-        className={`h-9 rounded-md border bg-background px-3 text-sm ${activeBrand ? activeClass : "border-input"}`}
-      >
-        {BRAND_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
+      {!isLockedToOne && (
+        <select
+          value={activeBrand}
+          onChange={(e) => setFilter("brand", e.target.value)}
+          className={`h-9 rounded-md border bg-background px-3 text-sm ${activeBrand ? activeClass : "border-input"}`}
+        >
+          {visibleBrandOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      )}
 
       <select
         value={activeStatus}

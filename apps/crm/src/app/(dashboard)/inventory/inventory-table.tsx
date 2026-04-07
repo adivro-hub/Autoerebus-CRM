@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -66,6 +67,10 @@ interface InventoryTableProps {
 
 export function InventoryTable({ vehicles }: InventoryTableProps) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const userBrands: string[] = ((session?.user as any)?.brands as string[]) || [];
+  const showBrandColumn = userRole === "SUPER_ADMIN" || userBrands.length === 0 || userBrands.length > 1;
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [sortCol, setSortCol] = useState<SortColumn>("createdAt");
@@ -159,11 +164,13 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                   Vehicul <SortIcon col="vehicle" />
                 </button>
               </th>
-              <th className="px-4 py-3 text-left font-medium">
-                <button onClick={() => toggleSort("brand")} className="flex items-center hover:text-gray-900">
-                  Brand <SortIcon col="brand" />
-                </button>
-              </th>
+              {showBrandColumn && (
+                <th className="px-4 py-3 text-left font-medium">
+                  <button onClick={() => toggleSort("brand")} className="flex items-center hover:text-gray-900">
+                    Brand <SortIcon col="brand" />
+                  </button>
+                </th>
+              )}
               <th className="px-4 py-3 text-left font-medium">
                 <button onClick={() => toggleSort("mileage")} className="flex items-center hover:text-gray-900">
                   Km <SortIcon col="mileage" />
@@ -230,7 +237,7 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3">{vehicle.brand}</td>
+                  {showBrandColumn && <td className="px-4 py-3">{vehicle.brand}</td>}
                   <td className="px-4 py-3">
                     {vehicle.mileage.toLocaleString("ro-RO")} km
                   </td>

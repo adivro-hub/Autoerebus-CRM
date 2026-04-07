@@ -77,6 +77,7 @@ export default function BookingFormModal({
   // Existing bookings for this vehicle
   const [existingBookings, setExistingBookings] = useState<ExistingBooking[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [bookingsDaysAhead, setBookingsDaysAhead] = useState(14);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [editFromDate, setEditFromDate] = useState("");
   const [editFromTime, setEditFromTime] = useState("");
@@ -166,9 +167,9 @@ export default function BookingFormModal({
           });
         }
 
-        // Fetch test drives for vehicle (next 2 weeks)
+        // Fetch test drives for vehicle
         try {
-          const resT = await fetch(`/api/test-drives?type=byVehicle&vehicleId=${vehicleId}&daysAhead=14`);
+          const resT = await fetch(`/api/test-drives?type=byVehicle&vehicleId=${vehicleId}&daysAhead=${bookingsDaysAhead}`);
           if (resT.ok) {
             const dataT = await resT.json();
             const testDrives = dataT.testDrives || [];
@@ -203,7 +204,7 @@ export default function BookingFormModal({
         setLoadingBookings(false);
       }
     })();
-  }, [vehicleId]);
+  }, [vehicleId, bookingsDaysAhead]);
 
   function startEditBooking(b: ExistingBooking) {
     setEditingBookingId(b.id);
@@ -477,9 +478,21 @@ export default function BookingFormModal({
           {/* Existing bookings for this vehicle */}
           {vehicleId && (
             <section>
-              <label className="mb-2 block text-sm font-medium text-gray-900">
-                Rezervări și test drive-uri în următoarele 2 săptămâni
-              </label>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <label className="block text-sm font-medium text-gray-900">
+                  Rezervări și test drive-uri în următoarele{" "}
+                  {bookingsDaysAhead === 14 ? "2 săptămâni" : `${bookingsDaysAhead} zile`}
+                </label>
+                {bookingsDaysAhead < 60 && (
+                  <button
+                    type="button"
+                    onClick={() => setBookingsDaysAhead((d) => (d === 14 ? 30 : 60))}
+                    className="text-sm text-gray-500 hover:text-gray-900 hover:underline"
+                  >
+                    Extinde la {bookingsDaysAhead === 14 ? "30 zile" : "60 zile"} →
+                  </button>
+                )}
+              </div>
               {loadingBookings ? (
                 <p className="text-sm text-gray-500">Se încarcă...</p>
               ) : existingBookings.length === 0 ? (

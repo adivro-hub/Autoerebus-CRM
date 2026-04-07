@@ -7,6 +7,7 @@ import { Button } from "@autoerebus/ui/components/button";
 import { Plus, Car } from "lucide-react";
 import { InventoryFilters } from "./inventory-filters";
 import { InventoryTable } from "./inventory-table";
+import { auth } from "@/lib/auth";
 
 interface PageProps {
   searchParams: Promise<{
@@ -23,10 +24,25 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   const page = parseInt(params.page ?? "1", 10);
   const pageSize = 20;
 
+  // Get user brand restrictions from session
+  const session = await auth();
+  const userRole = (session?.user as any)?.role;
+  const userBrands: string[] = ((session?.user as any)?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
+
   const where: Record<string, unknown> = {};
-  if (params.brand && params.brand !== "ALL") {
+
+  if (isRestricted) {
+    // Force restriction: vehicle brand must be in user's allowed brands
+    if (params.brand && params.brand !== "ALL" && userBrands.includes(params.brand)) {
+      where.brand = params.brand;
+    } else {
+      where.brand = { in: userBrands };
+    }
+  } else if (params.brand && params.brand !== "ALL") {
     where.brand = params.brand;
   }
+
   if (params.status) {
     where.status = params.status;
   }
