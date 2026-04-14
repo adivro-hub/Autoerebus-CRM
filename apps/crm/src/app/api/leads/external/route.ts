@@ -2,18 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@autoerebus/database";
 
 // Public endpoint - no auth required, uses API key
-// Accepts leads/inquiries from external websites (Nissan, Renault, Autorulate)
+// Accepts leads/inquiries from external websites (Nissan, Renault, Autorulate, Daune)
 
 const API_KEYS: Record<string, string> = {
   [process.env.NISSAN_API_KEY ?? "nissan-autoerebus-key"]: "NISSAN",
   [process.env.RENAULT_API_KEY ?? "renault-autoerebus-key"]: "RENAULT",
   [process.env.AUTORULATE_API_KEY ?? "autorulate-autoerebus-key"]: "AUTORULATE",
+  [process.env.DAUNE_API_KEY ?? "daune-autoerebus-key"]: "DAUNE",
+};
+
+const BRAND_MAP: Record<string, "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE" | "DAUNE"> = {
+  NISSAN: "NISSAN",
+  RENAULT: "RENAULT",
+  AUTORULATE: "AUTORULATE",
+  DAUNE: "DAUNE",
 };
 
 const SOURCE_MAP: Record<string, string> = {
   NISSAN: "WEBSITE_NISSAN",
   RENAULT: "WEBSITE_RENAULT",
   AUTORULATE: "WEBSITE_AUTORULATE",
+  DAUNE: "WEBSITE_DAUNE",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -105,7 +114,7 @@ export async function POST(request: NextRequest) {
     if (externalCarId) {
       const vehicle = await prisma.vehicle.findFirst({
         where: {
-          brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+          brand: BRAND_MAP[brand],
           autorulateId: Number(externalCarId),
         },
         select: { id: true },
@@ -116,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (!vehicleId && carTitle) {
       const vehicle = await prisma.vehicle.findFirst({
         where: {
-          brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+          brand: BRAND_MAP[brand],
           OR: [
             { title: { equals: carTitle, mode: "insensitive" } },
             { title: { contains: carTitle, mode: "insensitive" } },
@@ -156,9 +165,9 @@ export async function POST(request: NextRequest) {
       data: {
         customerId: customer.id,
         vehicleId,
-        source: leadSource as "WEBSITE_NISSAN" | "WEBSITE_RENAULT" | "WEBSITE_AUTORULATE" | "GOOGLE_ADS" | "FACEBOOK" | "AUTOVIT" | "OTHER",
+        source: leadSource as "WEBSITE_NISSAN" | "WEBSITE_RENAULT" | "WEBSITE_AUTORULATE" | "WEBSITE_DAUNE" | "GOOGLE_ADS" | "FACEBOOK" | "AUTOVIT" | "OTHER",
         type: type === "PRICE_OFFER" ? "PRICE_OFFER" : type === "TEST_DRIVE" ? "TEST_DRIVE" : type === "CALLBACK" ? "CALLBACK" : type === "TRADE_IN" ? "CAR_INQUIRY" : "CAR_INQUIRY",
-        brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+        brand: BRAND_MAP[brand],
         status: "NEW",
         priority: type === "CAR_INQUIRY" || type === "PRICE_OFFER" ? 1 : 0,
         notes: notesParts.join("\n"),
@@ -169,7 +178,7 @@ export async function POST(request: NextRequest) {
     const leadNouStage = await prisma.pipelineStage.findFirst({
       where: {
         pipelineType: "SALES",
-        brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+        brand: BRAND_MAP[brand],
         order: 0, // "Lead Nou" is always order 0
       },
     });
@@ -189,7 +198,7 @@ export async function POST(request: NextRequest) {
           value: vehicle?.discountPrice ?? vehicle?.price ?? null,
           currency: "EUR",
           probability: 5,
-          brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
+          brand: BRAND_MAP[brand],
         },
       });
     }

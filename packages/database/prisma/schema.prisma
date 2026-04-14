@@ -22,6 +22,7 @@ enum Brand {
   RENAULT
   AUTORULATE
   SERVICE
+  DAUNE
 }
 
 enum VehicleStatus {
@@ -56,6 +57,7 @@ enum LeadSource {
   WEBSITE_RENAULT
   WEBSITE_AUTORULATE
   WEBSITE_SERVICE
+  WEBSITE_DAUNE
   PHONE
   WALK_IN
   REFERRAL
