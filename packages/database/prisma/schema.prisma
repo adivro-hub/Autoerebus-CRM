@@ -534,21 +534,24 @@ model Deal {
 }
 
 model Activity {
-  id        String       @id @default(cuid())
-  type      ActivityType
-  content   String
-  leadId    String?
-  dealId    String?
-  userId    String?
-  metadata  Json?
-  createdAt DateTime     @default(now())
+  id              String       @id @default(cuid())
+  type            ActivityType
+  content         String
+  leadId          String?
+  dealId          String?
+  serviceOrderId  String?
+  userId          String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
 
-  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  deal Deal? @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id])
+  lead         Lead?         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  deal         Deal?         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  serviceOrder ServiceOrder? @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id])
 
   @@index([leadId])
   @@index([dealId])
+  @@index([serviceOrderId])
   @@index([createdAt])
 }
 
@@ -576,9 +579,10 @@ model ServiceOrder {
   updatedAt     DateTime           @updatedAt
 
   // Relations
-  customer   Customer @relation(fields: [customerId], references: [id])
-  vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
-  assignedTo User?    @relation("ServiceAgent", fields: [assignedToId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  vehicle    Vehicle?   @relation(fields: [vehicleId], references: [id])
+  assignedTo User?      @relation("ServiceAgent", fields: [assignedToId], references: [id])
+  activities Activity[]
 
   @@index([status])
   @@index([scheduledDate])
