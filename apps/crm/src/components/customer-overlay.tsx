@@ -74,8 +74,8 @@ interface CustomerData {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  NEW: "Nou", CONTACTED: "Contactat", QUALIFIED: "Calificat",
-  NEGOTIATION: "Negociere", WON: "Câștigat", LOST: "Pierdut",
+  NEW: "Nou", CONTACTED: "Contactat",
+  NEGOTIATION: "Negociere", WON: "Vândut", LOST: "Pierdut",
 };
 
 const STATUS_COLORS: Record<string, string> = {

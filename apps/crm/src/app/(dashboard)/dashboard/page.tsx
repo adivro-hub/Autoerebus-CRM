@@ -47,7 +47,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       }),
       prisma.deal.aggregate({
         where: {
-          stage: { name: { notIn: ["Câștigat", "Pierdut"] } },
+          stage: { name: { notIn: ["Vândut", "Câștigat", "Pierdut"] } },
           ...brandWhere,
         },
         _sum: { value: true },
@@ -55,7 +55,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       }),
       prisma.deal.aggregate({
         where: {
-          stage: { name: "Câștigat" },
+          stage: { name: { in: ["Vândut", "Câștigat"] } },
           ...brandWhere,
         },
         _sum: { value: true },
@@ -151,7 +151,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       href: "/sales?tab=pipeline",
     },
     {
-      title: "Vânzări Câștigate",
+      title: "Vândute",
       value: wonCount.toString(),
       change: wonValue > 0 ? `${formatCurrency(wonValue)} total` : "0 € total",
       icon: TrendingUp,

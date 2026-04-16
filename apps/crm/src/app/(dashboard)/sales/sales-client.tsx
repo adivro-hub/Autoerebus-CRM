@@ -117,9 +117,8 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_LABELS: Record<string, string> = {
   NEW: "Nou",
   CONTACTED: "Contactat",
-  QUALIFIED: "Calificat",
   NEGOTIATION: "Negociere",
-  WON: "Câștigat",
+  WON: "Vândut",
   LOST: "Pierdut",
 };
 
@@ -156,24 +155,22 @@ const STAGE_BORDER_COLORS: Record<string, string> = {
   Contactat: "border-l-violet-500",
   "Test Drive Programat": "border-l-cyan-500",
   "Test Drive Efectuat": "border-l-cyan-700",
-  Calificat: "border-l-amber-500",
   "Ofertă Trimisă": "border-l-orange-500",
   Negociere: "border-l-red-500",
-  "Câștigat": "border-l-emerald-500",
+  "Vândut": "border-l-emerald-500",
   Pierdut: "border-l-gray-500",
 };
 
 const STATUS_MAP: Record<string, string> = {
   "Lead Nou": "NEW",
   "Contactat": "CONTACTED",
-  "Test Drive Programat": "QUALIFIED",
-  "Test Drive Efectuat": "QUALIFIED",
-  "Calificat": "QUALIFIED",
+  "Test Drive Programat": "CONTACTED",
+  "Test Drive Efectuat": "CONTACTED",
   "Ofertă Trimisă": "NEGOTIATION",
   "Oferta Trimisa": "NEGOTIATION",
   "Negociere": "NEGOTIATION",
-  "Câștigat": "WON",
-  "Castigat": "WON",
+  "Vândut": "WON",
+  "Vandut": "WON",
   "Pierdut": "LOST",
 };
 
@@ -189,7 +186,33 @@ const ACTIVITY_LABELS: Record<string, string> = {
   DOCUMENT: "Document",
 };
 
-const STALE_HOURS = 8; // Lead is stale after 8 hours in new leads
+// Inactivity thresholds (minutes)
+const INACTIVITY_GREEN = 60;    // < 60 min = green
+const INACTIVITY_YELLOW = 240;  // 60 min - 4h = yellow
+// > 4h = red
+
+function getInactivityLevel(createdAt: string): "green" | "yellow" | "red" {
+  const mins = (Date.now() - new Date(createdAt).getTime()) / 60000;
+  if (mins < INACTIVITY_GREEN) return "green";
+  if (mins < INACTIVITY_YELLOW) return "yellow";
+  return "red";
+}
+
+function getInactivityRing(level: "green" | "yellow" | "red") {
+  switch (level) {
+    case "green": return "ring-2 ring-green-400";
+    case "yellow": return "ring-2 ring-amber-400";
+    case "red": return "ring-2 ring-red-500";
+  }
+}
+
+function getInactivityLabel(level: "green" | "yellow" | "red") {
+  switch (level) {
+    case "green": return { text: "Activ", cls: "text-green-600" };
+    case "yellow": return { text: "Atenție", cls: "text-amber-500" };
+    case "red": return { text: "Inactiv >4h", cls: "text-red-600" };
+  }
+}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("ro-RO", {
@@ -451,7 +474,9 @@ function LeadCard({
   onSelect: (leadId: string) => void;
   showBrand?: boolean;
 }) {
-  const stale = hoursSince(lead.createdAt) >= STALE_HOURS;
+  const inactivityLevel = getInactivityLevel(lead.createdAt);
+  const inactivityRing = getInactivityRing(inactivityLevel);
+  const inactivityLabel = getInactivityLabel(inactivityLevel);
   const [tdAction, setTdAction] = useState<"confirm" | "cancel" | "reschedule" | null>(null);
   const [tdLoading, setTdLoading] = useState(false);
   const [tdFeedback, setTdFeedback] = useState("");
@@ -523,11 +548,10 @@ function LeadCard({
 
   return (
     <Card
-      className={`cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-red-500" : ""}`}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${inactivityRing}`}
       onClick={() => onSelect(lead.id)}
     >
       <CardContent className="p-5">
-        {/* stale indicator via clock icon tooltip */}
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 font-medium text-sm text-gray-900">
             <User className="h-3.5 w-3.5 text-gray-400" />
@@ -653,8 +677,8 @@ function LeadCard({
 
         <div className="flex items-center justify-end mt-3 pt-2 border-t">
           <span
-            className={`flex items-center gap-1 cursor-default mr-auto text-sm ${stale ? "text-amber-500" : "text-gray-400"}`}
-            title={`Adăugat pe ${formatDate(lead.createdAt)}`}
+            className={`flex items-center gap-1 cursor-default mr-auto text-sm ${inactivityLabel.cls}`}
+            title={`${inactivityLabel.text} — Adăugat pe ${formatDate(lead.createdAt)}`}
           >
             <Clock className="h-3.5 w-3.5 shrink-0" />
             {(() => {
@@ -702,7 +726,7 @@ function PipelineDealCard({
   stages,
   showBrandBadge,
   dealBrand,
-  stale,
+  inactivityLevel,
   onSelect,
   onMoved,
 }: {
@@ -711,20 +735,22 @@ function PipelineDealCard({
   stages: PipelineStage[];
   showBrandBadge: boolean;
   dealBrand: string | null;
-  stale: boolean;
+  inactivityLevel: "green" | "yellow" | "red";
   onSelect: (leadId: string) => void;
   onMoved: () => void;
 }) {
+  const ring = getInactivityRing(inactivityLevel);
+  const label = getInactivityLabel(inactivityLevel);
   return (
     <Card
-      className={`cursor-pointer hover:shadow-md transition-shadow ${stale ? "ring-2 ring-red-500" : ""}`}
+      className={`cursor-pointer hover:shadow-md transition-shadow ${ring}`}
       onClick={() => onSelect(deal.lead.id)}
     >
       <CardContent className="p-5">
-        {stale && (
-          <div className="flex items-center gap-1 text-red-600 text-sm mb-1">
+        {inactivityLevel === "red" && (
+          <div className={`flex items-center gap-1 text-sm mb-1 ${label.cls}`}>
             <AlertTriangle className="h-3 w-3" />
-            &gt;{STALE_HOURS}h neprocesat
+            {label.text}
           </div>
         )}
         <div className="flex items-start justify-between">
@@ -2713,7 +2739,7 @@ export default function SalesClient({
                       stage.deals.map((deal) => {
                         const dealBrand = (deal as Record<string, unknown>)._brand as string | null;
                         const showBrandBadge = !selectedBrand || selectedBrand === "ALL";
-                        const stale = deal.createdAt ? hoursSince(deal.createdAt) >= STALE_HOURS : false;
+                        const dealInactivity = deal.createdAt ? getInactivityLevel(deal.createdAt) : "green";
                         return (
                           <div
                             key={deal.id}
@@ -2728,7 +2754,7 @@ export default function SalesClient({
                               stages={initialStages}
                               showBrandBadge={showBrandBadge}
                               dealBrand={dealBrand}
-                              stale={stale}
+                              inactivityLevel={dealInactivity}
                               onSelect={setSelectedLeadId}
                               onMoved={() => window.location.reload()}
                             />
