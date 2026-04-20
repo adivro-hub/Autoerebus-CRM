@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") || "";
   const brand = searchParams.get("brand") || "";
   const limit = parseInt(searchParams.get("limit") || "10");
+  const availableTestDrive = searchParams.get("availableTestDrive") === "true";
 
   try {
     const conditions: Record<string, unknown>[] = [];
     if (brand && brand !== "ALL") conditions.push({ brand });
+    if (availableTestDrive) conditions.push({ availableTestDrive: true });
     if (search) {
       conditions.push({
         OR: [

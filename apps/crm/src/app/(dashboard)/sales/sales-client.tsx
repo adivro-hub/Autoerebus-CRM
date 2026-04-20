@@ -97,8 +97,19 @@ interface Agent {
 interface ActiveTestDrive {
   id: string;
   customerId: string;
+  leadId?: string | null;
   vehicleId: string;
   scheduledAt: string;
+  status: string;
+  brand: string;
+}
+
+interface ActiveShowroom {
+  id: string;
+  customerId: string;
+  leadId?: string | null;
+  scheduledAt: string;
+  duration: number;
   status: string;
   brand: string;
 }
@@ -463,6 +474,7 @@ function LeadCard({
   lead,
   stages,
   testDrive,
+  showroom,
   onMoved,
   onSelect,
   showBrand,
@@ -470,6 +482,7 @@ function LeadCard({
   lead: Lead;
   stages: PipelineStage[];
   testDrive?: ActiveTestDrive | null;
+  showroom?: ActiveShowroom | null;
   onMoved: (leadId: string) => void;
   onSelect: (leadId: string) => void;
   showBrand?: boolean;
@@ -672,6 +685,19 @@ function LeadCard({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Showroom Appointment section */}
+        {showroom && (
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between rounded-md bg-amber-500 px-3 py-2">
+              <span className="flex items-center gap-1.5 text-sm font-medium text-white">
+                <User className="h-3.5 w-3.5" />
+                Showroom:{" "}
+                {new Date(showroom.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} — {new Date(showroom.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            </div>
           </div>
         )}
 
@@ -2006,14 +2032,23 @@ function NewLeadForm({
     email: "",
     source: "PHONE",
     brand: selectedBrand && selectedBrand !== "ALL" ? selectedBrand : "NISSAN",
+    type: "GENERAL",
     notes: "",
     assignedToId: "",
     vehicleId: "",
     customerId: "",
+    // TD fields (filled by modal)
     scheduleTestDrive: false,
     testDriveDate: "",
-    sendBrochure: false,
+    testDriveVehicleId: "",
+    // Showroom fields (filled by modal)
+    scheduleShowroom: false,
+    showroomDate: "",
   });
+
+  // Modal state
+  const [showTdModal, setShowTdModal] = useState(false);
+  const [showShowroomModal, setShowShowroomModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -2233,6 +2268,17 @@ function NewLeadForm({
             </div>
           </div>
 
+          {/* Lead type */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-500">Tip Lead</label>
+            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              className="w-full rounded-md border px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-ring">
+              {Object.entries(LEAD_TYPE_CONFIG).map(([key, cfg]) => (
+                <option key={key} value={key}>{cfg.label}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Vehicle search */}
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-500">Interesat de</label>
@@ -2300,39 +2346,61 @@ function NewLeadForm({
               placeholder="Detalii despre conversație, ce mașină dorește, buget..." />
           </div>
 
-          {/* Options */}
-          <div className="space-y-3 rounded-lg border p-3">
-            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Opțiuni</h4>
+          {/* Programari */}
+          <div className="space-y-2 rounded-lg border p-3">
+            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Programări (opțional)</h4>
 
-            {/* Test Drive */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.scheduleTestDrive}
-                onChange={(e) => setForm((f) => ({ ...f, scheduleTestDrive: e.target.checked }))}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <Calendar className="h-4 w-4 text-cyan-600" />
-              <span className="text-sm">Programează test drive</span>
-            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {/* Test Drive button */}
+              <button
+                type="button"
+                onClick={() => setShowTdModal(true)}
+                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${form.scheduleTestDrive ? "border-cyan-500 bg-cyan-50 text-cyan-800" : "hover:bg-muted"}`}
+              >
+                <Calendar className="h-4 w-4 text-cyan-600" />
+                {form.scheduleTestDrive ? "✓ Test Drive" : "Programează Test Drive"}
+              </button>
 
-            {form.scheduleTestDrive && (
-              <div className="ml-6 space-y-1">
-                <input type="datetime-local" value={form.testDriveDate}
-                  onChange={(e) => setForm((f) => ({ ...f, testDriveDate: e.target.value }))}
-                  min={new Date().toISOString().slice(0, 16)}
-                  className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                {!form.vehicleId && <p className="text-sm text-amber-600">⚠ Selectează o mașină pentru test drive.</p>}
+              {/* Showroom button */}
+              <button
+                type="button"
+                onClick={() => setShowShowroomModal(true)}
+                className={`flex items-center justify-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition-colors ${form.scheduleShowroom ? "border-amber-500 bg-amber-50 text-amber-800" : "hover:bg-muted"}`}
+              >
+                <User className="h-4 w-4 text-amber-600" />
+                {form.scheduleShowroom ? "✓ Showroom" : "Programează Showroom"}
+              </button>
+            </div>
+
+            {/* Summary of scheduled items */}
+            {form.scheduleTestDrive && form.testDriveDate && (
+              <div className="flex items-center justify-between rounded-md bg-cyan-50 border border-cyan-200 px-3 py-2 text-sm">
+                <div>
+                  <span className="font-medium text-cyan-900">Test Drive: </span>
+                  <span className="text-cyan-700">
+                    {new Date(form.testDriveDate).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, scheduleTestDrive: false, testDriveDate: "", testDriveVehicleId: "" }))}
+                  className="text-cyan-700 hover:text-red-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
             )}
 
-            {/* Brochure */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.sendBrochure}
-                onChange={(e) => setForm((f) => ({ ...f, sendBrochure: e.target.checked }))}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <Mail className="h-4 w-4 text-blue-600" />
-              <span className="text-sm">Trimite broșură pe email</span>
-            </label>
-            {form.sendBrochure && !form.email && !selectedCustomer?.email && (
-              <p className="ml-6 text-sm text-amber-600">⚠ Adaugă adresa de email.</p>
+            {form.scheduleShowroom && form.showroomDate && (
+              <div className="flex items-center justify-between rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm">
+                <div>
+                  <span className="font-medium text-amber-900">Showroom: </span>
+                  <span className="text-amber-700">
+                    {new Date(form.showroomDate).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <button type="button" onClick={() => setForm((f) => ({ ...f, scheduleShowroom: false, showroomDate: "" }))}
+                  className="text-amber-700 hover:text-red-600">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -2350,6 +2418,414 @@ function NewLeadForm({
           </div>
         </form>
       </div>
+
+      {/* Test Drive Scheduler Modal */}
+      {showTdModal && (
+        <TestDriveScheduler
+          brand={form.brand}
+          initialVehicleId={form.vehicleId || null}
+          onClose={() => setShowTdModal(false)}
+          onConfirm={(vehicleId, isoDate) => {
+            setForm((f) => ({
+              ...f,
+              scheduleTestDrive: true,
+              testDriveDate: isoDate,
+              testDriveVehicleId: vehicleId,
+            }));
+            setShowTdModal(false);
+          }}
+        />
+      )}
+
+      {/* Showroom Scheduler Modal */}
+      {showShowroomModal && (
+        <ShowroomScheduler
+          onClose={() => setShowShowroomModal(false)}
+          onConfirm={(isoDate) => {
+            setForm((f) => ({
+              ...f,
+              scheduleShowroom: true,
+              showroomDate: isoDate,
+            }));
+            setShowShowroomModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── TestDriveScheduler Modal ──────────────────────────
+
+function TestDriveScheduler({
+  brand,
+  initialVehicleId,
+  onClose,
+  onConfirm,
+}: {
+  brand: string;
+  initialVehicleId: string | null;
+  onClose: () => void;
+  onConfirm: (vehicleId: string, isoDate: string) => void;
+}) {
+  const [step, setStep] = useState<1 | 2>(initialVehicleId ? 2 : 1);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(initialVehicleId);
+  const [vehicleSearch, setVehicleSearch] = useState("");
+  const [vehicleResults, setVehicleResults] = useState<Array<{
+    id: string;
+    title: string | null;
+    make: { name: string };
+    model: { name: string };
+    year: number;
+  }>>([]);
+  const [selectedVehicleLabel, setSelectedVehicleLabel] = useState<string>("");
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+
+  // Date + slot state
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [slots, setSlots] = useState<Array<{ time: string; available: boolean }>>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  // Vehicle search
+  useEffect(() => {
+    if (step !== 1) return;
+    const q = vehicleSearch.trim();
+    if (q.length < 2) { setVehicleResults([]); return; }
+    const timer = setTimeout(async () => {
+      setLoadingVehicles(true);
+      try {
+        // First try matching brand, then fallback to all brands if none found
+        const resBrand = await fetch(`/api/vehicles?search=${encodeURIComponent(q)}&brand=${brand}&availableTestDrive=true&limit=8`);
+        const dataBrand = await resBrand.json();
+        const brandResults = dataBrand.vehicles || dataBrand.data || [];
+        if (brandResults.length > 0) {
+          setVehicleResults(brandResults);
+        } else {
+          // Fallback: search across all brands
+          const resAll = await fetch(`/api/vehicles?search=${encodeURIComponent(q)}&availableTestDrive=true&limit=8`);
+          const dataAll = await resAll.json();
+          setVehicleResults(dataAll.vehicles || dataAll.data || []);
+        }
+      } catch { setVehicleResults([]); }
+      setLoadingVehicles(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [vehicleSearch, brand, step]);
+
+  // Fetch slots when date/vehicle change
+  useEffect(() => {
+    if (!selectedDate || !selectedVehicleId) return;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    setLoadingSlots(true);
+    setSelectedTime(null);
+    fetch(`/api/test-drives/slots?vehicleId=${selectedVehicleId}&date=${dateStr}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const raw = data.data?.slots || data.slots || [];
+        setSlots(raw);
+      })
+      .catch(() => setSlots([]))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedDate, selectedVehicleId]);
+
+  const handleConfirm = () => {
+    if (!selectedVehicleId || !selectedDate || !selectedTime) return;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    onConfirm(selectedVehicleId, `${dateStr}T${selectedTime}:00`);
+  };
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const maxD = new Date(today); maxD.setDate(maxD.getDate() + 60);
+  const y = calendarMonth.getFullYear(), m = calendarMonth.getMonth();
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startOffset = firstDow === 0 ? 6 : firstDow - 1;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b p-4">
+          <h3 className="text-sm font-bold">
+            Programează Test Drive — Pas {step}/2
+          </h3>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="p-4">
+          {/* Step 1: Vehicle */}
+          {step === 1 && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">Alege mașina pentru test drive</p>
+              {selectedVehicleId && selectedVehicleLabel ? (
+                <div className="flex items-center justify-between rounded-md border bg-muted/30 p-3">
+                  <span className="text-sm font-medium">{selectedVehicleLabel}</span>
+                  <button onClick={() => { setSelectedVehicleId(null); setSelectedVehicleLabel(""); }}
+                    className="text-red-500 hover:text-red-700">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    autoFocus
+                    value={vehicleSearch}
+                    onChange={(e) => setVehicleSearch(e.target.value)}
+                    placeholder="Caută mașină (marcă, model...)"
+                    className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                  <div className="max-h-60 overflow-y-auto rounded-md border divide-y">
+                    {loadingVehicles && (
+                      <div className="flex justify-center p-3"><Loader2 className="h-4 w-4 animate-spin text-gray-400" /></div>
+                    )}
+                    {!loadingVehicles && vehicleSearch.length >= 2 && vehicleResults.length === 0 && (
+                      <div className="p-3 text-sm text-gray-500">Nicio mașină găsită</div>
+                    )}
+                    {vehicleResults.map((v) => (
+                      <button key={v.id}
+                        onClick={() => {
+                          setSelectedVehicleId(v.id);
+                          setSelectedVehicleLabel(`${v.make.name} ${v.model.name} (${v.year})`);
+                        }}
+                        className="flex w-full items-center gap-2 p-2 text-left text-sm hover:bg-muted">
+                        <Car className="h-4 w-4 text-gray-500" />
+                        {v.make.name} {v.model.name} ({v.year})
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                  Anulează
+                </button>
+                <button onClick={() => setStep(2)} disabled={!selectedVehicleId}
+                  className="rounded-md bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  Următor
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Date + slots */}
+          {step === 2 && (
+            <div className="space-y-3">
+              {selectedVehicleLabel && (
+                <div className="flex items-center gap-2 rounded-md bg-muted/50 p-2 text-sm">
+                  <Car className="h-4 w-4 text-gray-500" />
+                  <span>{selectedVehicleLabel}</span>
+                  {!initialVehicleId && (
+                    <button onClick={() => setStep(1)} className="ml-auto text-xs text-blue-600 hover:underline">
+                      Schimbă
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Calendar */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <button onClick={() => setCalendarMonth(new Date(y, m - 1, 1))}
+                    className="rounded p-1 hover:bg-muted">
+                    <ChevronDown className="h-4 w-4 rotate-90" />
+                  </button>
+                  <span className="text-sm font-medium">
+                    {calendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}
+                  </span>
+                  <button onClick={() => setCalendarMonth(new Date(y, m + 1, 1))}
+                    className="rounded p-1 hover:bg-muted">
+                    <ChevronDown className="h-4 w-4 -rotate-90" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+                  {["L", "Ma", "Mi", "J", "V", "S", "D"].map((d) => <div key={d}>{d}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const d = new Date(y, m, day);
+                    const isDisabled = d < today || d > maxD;
+                    const isSelected = selectedDate && d.toDateString() === selectedDate.toDateString();
+                    return (
+                      <button key={day} disabled={isDisabled}
+                        onClick={() => setSelectedDate(d)}
+                        className={`py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-gray-900 text-white" : isDisabled ? "text-gray-300" : "hover:bg-muted"}`}>
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Slots */}
+              {selectedDate && (
+                <div>
+                  <p className="text-sm text-gray-500 mb-2">
+                    Ore disponibile — {selectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}
+                  </p>
+                  {loadingSlots ? (
+                    <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                  ) : slots.length === 0 ? (
+                    <p className="text-sm text-red-500 italic">Niciun slot disponibil.</p>
+                  ) : (
+                    <div className="grid grid-cols-4 gap-1.5">
+                      {slots.map((s) => (
+                        <button key={s.time} disabled={!s.available}
+                          onClick={() => setSelectedTime(s.time)}
+                          className={`py-1.5 rounded-md text-sm transition-colors ${selectedTime === s.time ? "bg-gray-900 text-white" : s.available ? "border hover:bg-muted" : "border bg-gray-50 text-gray-300 line-through cursor-not-allowed"}`}>
+                          {s.time}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex justify-between gap-2 pt-2">
+                <button onClick={() => initialVehicleId ? onClose() : setStep(1)}
+                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+                  {initialVehicleId ? "Anulează" : "Înapoi"}
+                </button>
+                <button onClick={handleConfirm} disabled={!selectedTime}
+                  className="rounded-md bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+                  Confirmă
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ShowroomScheduler Modal ───────────────────────────
+
+function ShowroomScheduler({
+  onClose,
+  onConfirm,
+}: {
+  onClose: () => void;
+  onConfirm: (isoDate: string) => void;
+}) {
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [slots, setSlots] = useState<Array<{ time: string; available: boolean }>>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedDate) return;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    setLoadingSlots(true);
+    setSelectedTime(null);
+    fetch(`/api/showroom-appointments/slots?date=${dateStr}`)
+      .then((r) => r.json())
+      .then((data) => setSlots(data.data?.slots || []))
+      .catch(() => setSlots([]))
+      .finally(() => setLoadingSlots(false));
+  }, [selectedDate]);
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const maxD = new Date(today); maxD.setDate(maxD.getDate() + 60);
+  const y = calendarMonth.getFullYear(), m = calendarMonth.getMonth();
+  const firstDow = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const startOffset = firstDow === 0 ? 6 : firstDow - 1;
+
+  const handleConfirm = () => {
+    if (!selectedDate || !selectedTime) return;
+    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+    onConfirm(`${dateStr}T${selectedTime}:00`);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
+      <div className="w-full max-w-lg rounded-lg bg-white shadow-xl">
+        <div className="flex items-center justify-between border-b p-4">
+          <h3 className="text-sm font-bold">Programează Întâlnire Showroom (1h)</h3>
+          <button onClick={onClose} className="rounded-md p-1 hover:bg-gray-100">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-3 p-4">
+          {/* Calendar */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={() => setCalendarMonth(new Date(y, m - 1, 1))}
+                className="rounded p-1 hover:bg-muted">
+                <ChevronDown className="h-4 w-4 rotate-90" />
+              </button>
+              <span className="text-sm font-medium">
+                {calendarMonth.toLocaleDateString("ro-RO", { month: "long", year: "numeric" })}
+              </span>
+              <button onClick={() => setCalendarMonth(new Date(y, m + 1, 1))}
+                className="rounded p-1 hover:bg-muted">
+                <ChevronDown className="h-4 w-4 -rotate-90" />
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-gray-500 mb-1">
+              {["L", "Ma", "Mi", "J", "V", "S", "D"].map((d) => <div key={d}>{d}</div>)}
+            </div>
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: startOffset }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const day = i + 1;
+                const d = new Date(y, m, day);
+                const isDisabled = d < today || d > maxD;
+                const isSelected = selectedDate && d.toDateString() === selectedDate.toDateString();
+                return (
+                  <button key={day} disabled={isDisabled}
+                    onClick={() => setSelectedDate(d)}
+                    className={`py-1.5 rounded-md text-sm transition-colors ${isSelected ? "bg-gray-900 text-white" : isDisabled ? "text-gray-300" : "hover:bg-muted"}`}>
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {selectedDate && (
+            <div>
+              <p className="text-sm text-gray-500 mb-2">
+                Ore disponibile — {selectedDate.toLocaleDateString("ro-RO", { day: "numeric", month: "long" })}
+              </p>
+              {loadingSlots ? (
+                <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin" /></div>
+              ) : slots.length === 0 ? (
+                <p className="text-sm text-red-500 italic">Niciun slot disponibil.</p>
+              ) : (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {slots.map((s) => (
+                    <button key={s.time} disabled={!s.available}
+                      onClick={() => setSelectedTime(s.time)}
+                      className={`py-1.5 rounded-md text-sm transition-colors ${selectedTime === s.time ? "bg-gray-900 text-white" : s.available ? "border hover:bg-muted" : "border bg-gray-50 text-gray-300 line-through cursor-not-allowed"}`}>
+                      {s.time}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">
+              Anulează
+            </button>
+            <button onClick={handleConfirm} disabled={!selectedTime}
+              className="rounded-md bg-black px-3 py-1.5 text-sm text-white disabled:opacity-50">
+              Confirmă
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2361,11 +2837,13 @@ export default function SalesClient({
   initialStages,
   agents,
   activeTestDrives = [],
+  activeShowrooms = [],
 }: {
   initialLeads: Lead[];
   initialStages: PipelineStage[];
   agents: Agent[];
   activeTestDrives?: ActiveTestDrive[];
+  activeShowrooms?: ActiveShowroom[];
 }) {
   const [leads, setLeads] = useState(initialLeads);
   useEffect(() => { setLeads(initialLeads); }, [initialLeads]);
@@ -2647,7 +3125,8 @@ export default function SalesClient({
                   key={lead.id}
                   lead={lead}
                   stages={initialStages}
-                  testDrive={activeTestDrives.find((td) => td.customerId === lead.customer.id && (!lead.vehicle?.id || td.vehicleId === lead.vehicle.id))}
+                  testDrive={activeTestDrives.find((td) => td.leadId === lead.id)}
+                  showroom={activeShowrooms.find((sr) => sr.leadId === lead.id)}
                   onMoved={handleMoved}
                   onSelect={setSelectedLeadId}
                   showBrand={!selectedBrand}

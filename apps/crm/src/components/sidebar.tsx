@@ -21,6 +21,7 @@ import {
   List,
   ArrowUpDown,
   CarFront,
+  Building2,
 } from "lucide-react";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
@@ -50,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/service", label: "Service", icon: Wrench },
   { href: "/claims", label: "Daune", icon: Shield },
   { href: "/test-drives", label: "Test Drive", icon: Calendar },
+  { href: "/showroom", label: "Intalniri Showroom", icon: Building2 },
   { href: "/demo-bookings", label: "Masini Demo", icon: CarFront },
   { href: "/customers", label: "Clienti", icon: Users },
   { href: "/users", label: "Utilizatori", icon: UserCog },

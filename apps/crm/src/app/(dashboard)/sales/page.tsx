@@ -21,6 +21,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
   let stages: unknown[] = [];
   let agents: unknown[] = [];
   let activeTestDrives: unknown[] = [];
+  let activeShowrooms: unknown[] = [];
 
   try {
     const leadWhere: Record<string, unknown> = {};
@@ -69,8 +70,26 @@ export default async function SalesPage({ searchParams }: PageProps) {
       select: {
         id: true,
         customerId: true,
+        leadId: true,
         vehicleId: true,
         scheduledAt: true,
+        status: true,
+        brand: true,
+      },
+      orderBy: { scheduledAt: "asc" },
+    });
+
+    activeShowrooms = await prisma.showroomAppointment.findMany({
+      where: {
+        status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
+        ...(brandFilter ? { brand: brandFilter } : {}),
+      },
+      select: {
+        id: true,
+        customerId: true,
+        leadId: true,
+        scheduledAt: true,
+        duration: true,
         status: true,
         brand: true,
       },
@@ -145,6 +164,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
       initialStages={JSON.parse(JSON.stringify(stages))}
       agents={JSON.parse(JSON.stringify(agents))}
       activeTestDrives={JSON.parse(JSON.stringify(activeTestDrives))}
+      activeShowrooms={JSON.parse(JSON.stringify(activeShowrooms))}
     />
   );
 }

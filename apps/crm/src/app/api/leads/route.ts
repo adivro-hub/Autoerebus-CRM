@@ -23,7 +23,9 @@ export async function POST(request: NextRequest) {
     customerId: existingCustomerId,
     scheduleTestDrive,
     testDriveDate,
-    sendBrochure,
+    testDriveVehicleId,
+    scheduleShowroom,
+    showroomDate,
     type,
   } = body;
 
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
         customerId: customer.id,
         vehicleId: vehicleId || null,
         source,
-        type: type || (scheduleTestDrive ? "TEST_DRIVE" : "GENERAL"),
+        type: scheduleTestDrive ? "TEST_DRIVE" : (type || "GENERAL"),
         brand,
         status: "NEW",
         notes: notes || null,
@@ -76,12 +78,30 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create deal in Lead Nou
-    const leadNouStage = await prisma.pipelineStage.findFirst({
-      where: { brand, pipelineType: "SALES", order: 0 },
-    });
+    // Determine target pipeline stage:
+    // - Test drive scheduled → "Test Drive Programat"
+    // - Showroom only or nothing scheduled → "Contactat" (agent has contacted the customer)
+    const hasScheduledTD = scheduleTestDrive && testDriveDate;
+    const targetStageName = hasScheduledTD ? "Test Drive Programat" : "Contactat";
 
-    if (leadNouStage) {
+    let targetStage = await prisma.pipelineStage.findFirst({
+      where: { brand, pipelineType: "SALES", name: targetStageName },
+    });
+    // Fallback to any stage with that name (not per brand)
+    if (!targetStage) {
+      targetStage = await prisma.pipelineStage.findFirst({
+        where: { pipelineType: "SALES", name: targetStageName },
+      });
+    }
+    // Final fallback: first stage
+    if (!targetStage) {
+      targetStage = await prisma.pipelineStage.findFirst({
+        where: { brand, pipelineType: "SALES" },
+        orderBy: { order: "asc" },
+      });
+    }
+
+    if (targetStage) {
       const vehicle = vehicleId
         ? await prisma.vehicle.findUnique({
             where: { id: vehicleId },
@@ -92,14 +112,20 @@ export async function POST(request: NextRequest) {
       await prisma.deal.create({
         data: {
           leadId: lead.id,
-          stageId: leadNouStage.id,
+          stageId: targetStage.id,
           value: vehicle?.discountPrice ?? vehicle?.price ?? null,
           currency: "EUR",
-          probability: 5,
+          probability: hasScheduledTD ? 25 : 15,
           brand,
           assignedToId: assignedToId || session.user.id || null,
         },
       });
+
+      // Update lead status to match
+      await prisma.lead.update({
+        where: { id: lead.id },
+        data: { status: "CONTACTED" },
+      }).catch(() => {});
     }
 
     // Log activities
@@ -113,43 +139,64 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
 
     // Schedule test drive if requested
-    if (scheduleTestDrive && testDriveDate && vehicleId) {
-      const tdScheduledAt = new Date(testDriveDate);
-      const td = await prisma.testDrive.create({
+    if (scheduleTestDrive && testDriveDate) {
+      const tdVehicleId = testDriveVehicleId || vehicleId;
+      if (tdVehicleId) {
+        const tdScheduledAt = new Date(testDriveDate);
+        const td = await prisma.testDrive.create({
+          data: {
+            vehicleId: tdVehicleId,
+            customerId: customer.id,
+            leadId: lead.id,
+            scheduledAt: tdScheduledAt,
+            duration: 30,
+            contactName: `${firstName || customer.firstName} ${lastName || customer.lastName}`,
+            contactPhone: phone || customer.phone,
+            contactEmail: email || customer.email,
+            notes: `[CRM] Test drive programat de ${session.user.name || "admin"}`,
+            brand,
+            status: "CONFIRMED",
+          },
+        });
+
+        handleTestDriveConflictWithDemoBookings(td.id, tdVehicleId, tdScheduledAt, 30).catch((e) =>
+          console.error("[TD conflict check] error:", e)
+        );
+
+        await prisma.activity.create({
+          data: {
+            type: "TEST_DRIVE",
+            content: `Test drive confirmat: ${new Date(testDriveDate).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`,
+            leadId: lead.id,
+            userId: session.user.id || null,
+          },
+        }).catch(() => {});
+      }
+    }
+
+    // Schedule showroom appointment if requested
+    if (scheduleShowroom && showroomDate) {
+      const showScheduledAt = new Date(showroomDate);
+      await prisma.showroomAppointment.create({
         data: {
-          vehicleId,
           customerId: customer.id,
-          scheduledAt: tdScheduledAt,
-          duration: 30,
+          leadId: lead.id,
+          scheduledAt: showScheduledAt,
+          duration: 60,
+          brand,
+          agentId: assignedToId || session.user.id || null,
           contactName: `${firstName || customer.firstName} ${lastName || customer.lastName}`,
           contactPhone: phone || customer.phone,
           contactEmail: email || customer.email,
-          notes: `[CRM] Test drive programat de ${session.user.name || "admin"}`,
-          brand,
-          status: "SCHEDULED",
+          notes: `[CRM] Programare showroom de ${session.user.name || "admin"}`,
+          status: "CONFIRMED",
         },
-      });
-
-      handleTestDriveConflictWithDemoBookings(td.id, vehicleId, tdScheduledAt, 30).catch((e) =>
-        console.error("[TD conflict check] error:", e)
-      );
+      }).catch((e) => console.error("[Showroom create] error:", e));
 
       await prisma.activity.create({
         data: {
-          type: "TEST_DRIVE",
-          content: `Test drive programat: ${new Date(testDriveDate).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`,
-          leadId: lead.id,
-          userId: session.user.id || null,
-        },
-      }).catch(() => {});
-    }
-
-    // Log brochure request
-    if (sendBrochure && (email || customer.email)) {
-      await prisma.activity.create({
-        data: {
-          type: "EMAIL",
-          content: `📄 Broșură solicitată — va fi trimisă pe ${email || customer.email}`,
+          type: "MEETING",
+          content: `Întâlnire showroom: ${new Date(showroomDate).toLocaleDateString("ro-RO", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}`,
           leadId: lead.id,
           userId: session.user.id || null,
         },

@@ -201,6 +201,7 @@ model User {
   assignedServices    ServiceOrder[]  @relation("ServiceAgent")
   assignedClaims      Claim[]         @relation("ClaimAgent")
   assignedTestDrives  TestDrive[]     @relation("TestDriveAgent")
+  assignedShowrooms   ShowroomAppointment[] @relation("ShowroomAgent")
   createdCustomers    Customer[]      @relation("CustomerCreatedBy")
   activities          Activity[]
   notifications       Notification[]
@@ -256,6 +257,7 @@ model Customer {
   serviceOrders ServiceOrder[]
   claims        Claim[]
   testDrives    TestDrive[]
+  showroomAppointments ShowroomAppointment[]
   customerNotes CustomerNote[]
   demoBookings  DemoBooking[]
 
@@ -640,6 +642,7 @@ model ClaimDocument {
 model TestDrive {
   id           String          @id @default(cuid())
   customerId   String
+  leadId       String?
   vehicleId    String
   scheduledAt  DateTime
   duration     Int             @default(30) // minutes
@@ -663,6 +666,33 @@ model TestDrive {
   @@index([scheduledAt])
   @@index([brand])
   @@index([status])
+  @@index([leadId])
+}
+
+model ShowroomAppointment {
+  id           String          @id @default(cuid())
+  customerId   String
+  leadId       String?
+  scheduledAt  DateTime
+  duration     Int             @default(30) // minutes
+  status       TestDriveStatus @default(SCHEDULED)
+  brand        Brand
+  agentId      String?
+  contactName  String?
+  contactPhone String?
+  contactEmail String?
+  notes        String?
+  googleEventId String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  agent    User?    @relation("ShowroomAgent", fields: [agentId], references: [id])
+
+  @@index([scheduledAt])
+  @@index([brand])
+  @@index([status])
+  @@index([customerId])
 }
 
 model DemoCar {
