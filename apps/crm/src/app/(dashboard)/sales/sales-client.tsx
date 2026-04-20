@@ -2909,7 +2909,13 @@ export default function SalesClient({
   const visibleStages = useMemo(() => {
     let stages: PipelineStage[];
     if (selectedBrand && selectedBrand !== "ALL") {
-      stages = initialStages.filter((s) => s.brand === selectedBrand);
+      // Single brand filter: tag deals with the stage brand so MoveDropdown can filter stages.
+      stages = initialStages
+        .filter((s) => s.brand === selectedBrand)
+        .map((s) => ({
+          ...s,
+          deals: s.deals.map((d) => ({ ...d, _brand: s.brand })) as PipelineStage["deals"],
+        }));
     } else {
       const merged = new Map<string, PipelineStage>();
       for (const stage of initialStages) {
