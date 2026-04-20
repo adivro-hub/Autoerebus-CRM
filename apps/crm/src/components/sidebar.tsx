@@ -47,12 +47,19 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/sync", label: "Sincronizare", icon: ArrowUpDown },
     ],
   },
-  { href: "/sales", label: "Vanzari", icon: TrendingUp },
+  {
+    href: "/sales",
+    label: "Vanzari",
+    icon: TrendingUp,
+    children: [
+      { href: "/sales", label: "Pipeline", icon: TrendingUp },
+      { href: "/test-drives", label: "Test Drive", icon: Calendar },
+      { href: "/showroom", label: "Intalniri Showroom", icon: Building2 },
+      { href: "/demo-bookings", label: "Masini Demo", icon: CarFront },
+    ],
+  },
   { href: "/service", label: "Service", icon: Wrench },
   { href: "/claims", label: "Daune", icon: Shield },
-  { href: "/test-drives", label: "Test Drive", icon: Calendar },
-  { href: "/showroom", label: "Intalniri Showroom", icon: Building2 },
-  { href: "/demo-bookings", label: "Masini Demo", icon: CarFront },
   { href: "/customers", label: "Clienti", icon: Users },
   { href: "/users", label: "Utilizatori", icon: UserCog },
   { href: "/settings", label: "Setari", icon: Settings },
@@ -67,13 +74,26 @@ export function Sidebar() {
   const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
   const hasService = !isRestricted || userBrands.includes("SERVICE");
   const isAdmin = userRole === "SUPER_ADMIN" || userRole === "ADMIN";
+  const isManagerOrAbove = userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "MANAGER";
+  const canAutorulate = !isRestricted || userBrands.includes("AUTORULATE");
 
   // Filter nav items based on user permissions
-  const navItems = NAV_ITEMS.filter((item) => {
-    if ((item.href === "/service" || item.href === "/claims") && !hasService) return false;
-    if (item.href === "/users" && !isAdmin) return false;
-    return true;
-  });
+  const navItems = NAV_ITEMS
+    .filter((item) => {
+      if ((item.href === "/service" || item.href === "/claims") && !hasService) return false;
+      if (item.href === "/users" && !isAdmin) return false;
+      if ((item.href === "/customers" || item.href === "/settings") && !isManagerOrAbove) return false;
+      return true;
+    })
+    // Filter children (e.g., Inventar → Sincronizare only for AUTORULATE)
+    .map((item) => {
+      if (!item.children) return item;
+      const filteredChildren = item.children.filter((child) => {
+        if (child.href === "/sync" && !canAutorulate) return false;
+        return true;
+      });
+      return { ...item, children: filteredChildren };
+    });
 
   const [collapsed, setCollapsed] = useState(false);
 

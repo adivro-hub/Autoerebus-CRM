@@ -74,15 +74,24 @@ export async function POST(request: NextRequest) {
         brand,
         status: "NEW",
         notes: notes || null,
-        assignedToId: assignedToId || session.user.id || null,
+        // Auto-assign to session user only if they are an AGENT (they own the lead they create).
+        // Managers/admins leave it unassigned so a manager can dispatch it.
+        assignedToId: assignedToId
+          || ((session.user as { role?: string })?.role === "AGENT" ? session.user.id : null),
       },
     });
 
     // Determine target pipeline stage:
     // - Test drive scheduled → "Test Drive Programat"
-    // - Showroom only or nothing scheduled → "Contactat" (agent has contacted the customer)
+    // - Showroom scheduled → "Întâlnire Showroom"
+    // - Nothing scheduled → "Contactat" (agent has contacted the customer)
     const hasScheduledTD = scheduleTestDrive && testDriveDate;
-    const targetStageName = hasScheduledTD ? "Test Drive Programat" : "Contactat";
+    const hasScheduledShowroom = scheduleShowroom && showroomDate;
+    const targetStageName = hasScheduledTD
+      ? "Test Drive Programat"
+      : hasScheduledShowroom
+        ? "Întâlnire Showroom"
+        : "Contactat";
 
     let targetStage = await prisma.pipelineStage.findFirst({
       where: { brand, pipelineType: "SALES", name: targetStageName },
@@ -115,9 +124,10 @@ export async function POST(request: NextRequest) {
           stageId: targetStage.id,
           value: vehicle?.discountPrice ?? vehicle?.price ?? null,
           currency: "EUR",
-          probability: hasScheduledTD ? 25 : 15,
+          probability: hasScheduledTD ? 25 : hasScheduledShowroom ? 20 : 15,
           brand,
-          assignedToId: assignedToId || session.user.id || null,
+          assignedToId: assignedToId
+            || ((session.user as { role?: string })?.role === "AGENT" ? session.user.id : null),
         },
       });
 

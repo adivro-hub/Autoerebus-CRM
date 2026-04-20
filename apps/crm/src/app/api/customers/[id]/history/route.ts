@@ -13,6 +13,29 @@ export async function GET(
 
   const { id } = await params;
 
+  // Access control:
+  // - SUPER_ADMIN / ADMIN / MANAGER → always allowed
+  // - Others (AGENT, RECEPTION) → only if the customer has a lead/TD/service-order
+  //   in at least one of the user's allowed brands
+  const userRole = (session.user as { role?: string })?.role;
+  const userBrands = ((session.user as { brands?: string[] })?.brands as string[]) || [];
+  const isManagerOrAbove =
+    userRole === "SUPER_ADMIN" || userRole === "ADMIN" || userRole === "MANAGER";
+
+  if (!isManagerOrAbove) {
+    if (userBrands.length === 0) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const [leadInBrand, tdInBrand, soInBrand] = await Promise.all([
+      prisma.lead.count({ where: { customerId: id, brand: { in: userBrands as never[] } } }),
+      prisma.testDrive.count({ where: { customerId: id, brand: { in: userBrands as never[] } } }),
+      prisma.serviceOrder.count({ where: { customerId: id, brand: { in: userBrands as never[] } } }),
+    ]);
+    if (leadInBrand + tdInBrand + soInBrand === 0) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   try {
     const [customer, leads, testDrives, serviceOrders] = await Promise.all([
       prisma.customer.findUnique({

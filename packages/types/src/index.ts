@@ -22,10 +22,13 @@ export const BRAND_COLORS: Record<BrandType, { primary: string; secondary: strin
 export const SALES_PIPELINE_STAGES = [
   { name: "Lead Nou", order: 0, color: "#3B82F6" },
   { name: "Contactat", order: 1, color: "#8B5CF6" },
-  { name: "Ofertă Trimisă", order: 2, color: "#F97316" },
-  { name: "Negociere", order: 3, color: "#EF4444" },
-  { name: "Vândut", order: 4, color: "#10B981" },
-  { name: "Pierdut", order: 5, color: "#6B7280" },
+  { name: "Întâlnire Showroom", order: 2, color: "#F59E0B" },
+  { name: "Test Drive Programat", order: 3, color: "#06B6D4" },
+  { name: "Test Drive Efectuat", order: 4, color: "#0EA5E9" },
+  { name: "Ofertă Trimisă", order: 5, color: "#F97316" },
+  { name: "Negociere", order: 6, color: "#EF4444" },
+  { name: "Vândut", order: 7, color: "#10B981" },
+  { name: "Pierdut", order: 8, color: "#6B7280" },
 ] as const;
 
 export const SERVICE_PIPELINE_STAGES = [

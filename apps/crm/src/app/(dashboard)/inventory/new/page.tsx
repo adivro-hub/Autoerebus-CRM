@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/components/card";
 import { Button } from "@autoerebus/ui/components/button";
@@ -45,6 +46,10 @@ interface PropertyOption {
 
 export default function NewVehiclePage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const userRole = (session?.user as { role?: string })?.role;
+  const userBrands = ((session?.user as { brands?: string[] })?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [images, setImages] = useState<UploadedImage[]>([]);
@@ -172,6 +177,7 @@ export default function NewVehiclePage() {
                   <option value="">Selecteaza brand</option>
                   {Object.entries(BRAND_LABELS)
                     .filter(([key]) => key !== "SERVICE")
+                    .filter(([key]) => !isRestricted || userBrands.includes(key))
                     .map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}

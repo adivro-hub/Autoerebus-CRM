@@ -60,17 +60,19 @@ export function BrandProvider({ children }: { children: React.ReactNode }) {
     setInitialized(true);
   }, []);
 
-  // If user is restricted to a single brand, force-select it
+  // Handle restriction:
+  // - 1 brand → force-lock on it
+  // - 2+ brands → allow "ALL" (meaning all of their assigned brands)
+  // - Block access to brands they don't have
   let selectedBrand: BrandFilter = urlBrand || storedBrand;
   if (isRestricted) {
     if (allowedBrands.length === 1) {
       selectedBrand = allowedBrands[0] as BrandFilter;
     } else if (selectedBrand !== "ALL" && !allowedBrands.includes(selectedBrand)) {
-      // User picked a brand they don't have access to → reset
-      selectedBrand = allowedBrands[0] as BrandFilter;
-    } else if (selectedBrand === "ALL") {
-      selectedBrand = allowedBrands[0] as BrandFilter;
+      // User picked a brand they don't have access to → fallback to ALL
+      selectedBrand = "ALL";
     }
+    // else: keep "ALL" or any of their allowed brands
   }
 
   // On first load, if no URL brand but stored brand exists, update URL
@@ -119,8 +121,12 @@ export function BrandSwitcher() {
   const { selectedBrand, setSelectedBrand, allowedBrands } = useBrand();
   const current = BRAND_OPTIONS.find((o) => o.value === selectedBrand);
   const isRestricted = allowedBrands.length > 0;
+  // For restricted users with multiple brands, include "ALL" + their brands.
+  // For users locked to a single brand, only show that one.
   const visibleOptions = isRestricted
-    ? BRAND_OPTIONS.filter((o) => o.value !== "ALL" && allowedBrands.includes(o.value))
+    ? allowedBrands.length === 1
+      ? BRAND_OPTIONS.filter((o) => allowedBrands.includes(o.value))
+      : BRAND_OPTIONS.filter((o) => o.value === "ALL" || allowedBrands.includes(o.value))
     : BRAND_OPTIONS;
   const isLocked = isRestricted && allowedBrands.length === 1;
 

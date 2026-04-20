@@ -16,6 +16,9 @@ export default async function SettingsPage({
 
   const role = (session.user as any).role as string;
   const isSuperAdmin = role === "SUPER_ADMIN";
+  if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "MANAGER") {
+    redirect("/sales");
+  }
 
   const params = await searchParams;
 

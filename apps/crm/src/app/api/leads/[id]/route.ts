@@ -59,12 +59,9 @@ export async function GET(
       });
     }
 
-    // Fetch test drives for this customer (and optionally vehicle)
+    // Fetch test drives belonging to THIS lead (not all customer TDs — those are in customer details)
     const testDrives = await prisma.testDrive.findMany({
-      where: {
-        customerId: lead.customerId,
-        brand: lead.brand,
-      },
+      where: { leadId: lead.id },
       include: {
         vehicle: {
           select: { id: true, title: true, make: { select: { name: true } }, model: { select: { name: true } } },
@@ -73,7 +70,13 @@ export async function GET(
       orderBy: { scheduledAt: "desc" },
     });
 
-    return NextResponse.json({ success: true, data: { ...lead, additionalVehicles, testDrives } });
+    // Fetch showroom appointments belonging to THIS lead
+    const showroomAppointments = await prisma.showroomAppointment.findMany({
+      where: { leadId: lead.id },
+      orderBy: { scheduledAt: "desc" },
+    });
+
+    return NextResponse.json({ success: true, data: { ...lead, additionalVehicles, testDrives, showroomAppointments } });
   } catch (error: unknown) {
     console.error("Lead fetch error:", error);
     return NextResponse.json(

@@ -2,16 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@autoerebus/ui/lib/utils";
 
-const tabs = [
+const baseTabs = [
   { href: "/inventory", label: "Vehicule" },
   { href: "/inventory/properties", label: "Proprietati" },
-  { href: "/inventory/autovit", label: "Autovit" },
 ];
 
 export function InventoryNav() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const userRole = (session?.user as { role?: string })?.role;
+  const userBrands = ((session?.user as { brands?: string[] })?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
+  const canAutovit = !isRestricted || userBrands.includes("AUTORULATE");
+
+  const tabs = canAutovit
+    ? [...baseTabs, { href: "/inventory/autovit", label: "Autovit" }]
+    : baseTabs;
 
   return (
     <nav className="flex gap-1 border-b bg-background px-1">

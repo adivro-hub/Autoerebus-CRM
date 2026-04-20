@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@autoerebus/ui/components/card";
 import { Button } from "@autoerebus/ui/components/button";
@@ -124,6 +125,11 @@ export default function EditVehiclePage() {
   const [publishing, setPublishing] = useState(false);
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const toast = useToast();
+  const { data: session } = useSession();
+  const userRole = (session?.user as { role?: string })?.role;
+  const userBrands = ((session?.user as { brands?: string[] })?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
+  const canAutovit = !isRestricted || userBrands.includes("AUTORULATE");
 
   async function callAutovit(action: "publish" | "export-olx" | "activate" | "delete", confirmMsg: string, loadingLabel: string) {
     if (!vehicle) return;
@@ -357,6 +363,7 @@ export default function EditVehiclePage() {
                 >
                   {Object.entries(BRAND_LABELS)
                     .filter(([key]) => key !== "SERVICE")
+                    .filter(([key]) => !isRestricted || userBrands.includes(key) || key === vehicle.brand)
                     .map(([value, label]) => (
                       <option key={value} value={value}>{label}</option>
                     ))}
@@ -879,93 +886,97 @@ export default function EditVehiclePage() {
               Salvat cu succes
             </div>
           )}
-          {vehicle?.autovitId && (
-            <div className="flex items-center gap-2">
-              {(() => {
-                const s = vehicle.autovitStatus;
-                const cfg: Record<string, { label: string; cls: string }> = {
-                  active: { label: "Activ", cls: "bg-green-100 text-green-700" },
-                  unpaid: { label: "În așteptare", cls: "bg-amber-100 text-amber-700" },
-                  deactivated: { label: "Dezactivat", cls: "bg-gray-200 text-gray-700" },
-                };
-                const style = s && cfg[s] ? cfg[s] : { label: s || "Necunoscut", cls: "bg-gray-100 text-gray-600" };
-                return (
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium ${style.cls}`}>
-                    <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                    Autovit: {style.label}
-                  </span>
-                );
-              })()}
-              <a
-                href={`https://www.autovit.ro/autoturisme/anunt/?ID=${vehicle.autovitId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-gray-500 hover:text-gray-900 hover:underline flex items-center gap-1"
-              >
-                <ExternalLink className="h-3 w-3" />
-                ID {vehicle.autovitId}
-              </a>
-            </div>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handlePublishAutovit}
-            disabled={publishing}
-            title="Creează sau actualizează anunțul pe Autovit (fără activare)"
-          >
-            {publishing && actionBusy?.includes("Anunț") ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="h-4 w-4" />
-            )}
-            {vehicle?.autovitId ? "Actualizează Autovit" : "Publică pe Autovit"}
-          </Button>
-
-          {vehicle?.autovitId && (
+          {canAutovit && (
             <>
+              {vehicle?.autovitId && (
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const s = vehicle.autovitStatus;
+                    const cfg: Record<string, { label: string; cls: string }> = {
+                      active: { label: "Activ", cls: "bg-green-100 text-green-700" },
+                      unpaid: { label: "În așteptare", cls: "bg-amber-100 text-amber-700" },
+                      deactivated: { label: "Dezactivat", cls: "bg-gray-200 text-gray-700" },
+                    };
+                    const style = s && cfg[s] ? cfg[s] : { label: s || "Necunoscut", cls: "bg-gray-100 text-gray-600" };
+                    return (
+                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-sm font-medium ${style.cls}`}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                        Autovit: {style.label}
+                      </span>
+                    );
+                  })()}
+                  <a
+                    href={`https://www.autovit.ro/autoturisme/anunt/?ID=${vehicle.autovitId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-gray-500 hover:text-gray-900 hover:underline flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    ID {vehicle.autovitId}
+                  </a>
+                </div>
+              )}
               <Button
                 type="button"
                 variant="outline"
-                onClick={handleExportOlx}
+                onClick={handlePublishAutovit}
                 disabled={publishing}
-                title="Adaugă anunțul și pe OLX.ro (gratuit). Funcționează doar pe anunțuri neactivate."
+                title="Creează sau actualizează anunțul pe Autovit (fără activare)"
               >
-                {publishing && actionBusy === "Export OLX" ? (
+                {publishing && actionBusy?.includes("Anunț") ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
-                Export OLX
+                {vehicle?.autovitId ? "Actualizează Autovit" : "Publică pe Autovit"}
               </Button>
-              <Button
-                type="button"
-                onClick={handleActivateAutovit}
-                disabled={publishing}
-                title="Activează anunțul pe Autovit (aplică promoțiile din coadă, inclusiv OLX)"
-              >
-                {publishing && actionBusy === "Anunț activat" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="h-4 w-4" />
-                )}
-                Activează
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleDeleteAutovit}
-                disabled={publishing}
-                className="text-red-600 border-red-300 hover:bg-red-50"
-                title="Șterge definitiv anunțul de pe Autovit"
-              >
-                {publishing && actionBusy === "Anunț șters" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                Șterge Autovit
-              </Button>
+
+              {vehicle?.autovitId && (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleExportOlx}
+                    disabled={publishing}
+                    title="Adaugă anunțul și pe OLX.ro (gratuit). Funcționează doar pe anunțuri neactivate."
+                  >
+                    {publishing && actionBusy === "Export OLX" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                    Export OLX
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleActivateAutovit}
+                    disabled={publishing}
+                    title="Activează anunțul pe Autovit (aplică promoțiile din coadă, inclusiv OLX)"
+                  >
+                    {publishing && actionBusy === "Anunț activat" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    Activează
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleDeleteAutovit}
+                    disabled={publishing}
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    title="Șterge definitiv anunțul de pe Autovit"
+                  >
+                    {publishing && actionBusy === "Anunț șters" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    Șterge Autovit
+                  </Button>
+                </>
+              )}
             </>
           )}
           <Link href={`/inventory/${id}`}>

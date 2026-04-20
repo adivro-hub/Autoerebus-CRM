@@ -1,7 +1,9 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { prisma } from "@autoerebus/database";
+import { auth } from "@/lib/auth";
 import { Card, CardContent } from "@autoerebus/ui/components/card";
 import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
@@ -36,6 +38,13 @@ interface PageProps {
 }
 
 export default async function CustomersPage({ searchParams }: PageProps) {
+  // Only MANAGER, ADMIN, SUPER_ADMIN can access the full customer list
+  const session = await auth();
+  const role = (session?.user as { role?: string })?.role;
+  if (role !== "SUPER_ADMIN" && role !== "ADMIN" && role !== "MANAGER") {
+    redirect("/sales");
+  }
+
   const params = await searchParams;
   const page = parseInt(params.page ?? "1", 10);
   const pageSize = 25;

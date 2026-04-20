@@ -164,6 +164,8 @@ const BRAND_SHORT_LABELS: Record<string, string> = {
 const STAGE_BORDER_COLORS: Record<string, string> = {
   "Lead Nou": "border-l-blue-500",
   Contactat: "border-l-violet-500",
+  "Întâlnire Showroom": "border-l-amber-500",
+  "Intalnire Showroom": "border-l-amber-500",
   "Test Drive Programat": "border-l-cyan-500",
   "Test Drive Efectuat": "border-l-cyan-700",
   "Ofertă Trimisă": "border-l-orange-500",
@@ -175,6 +177,8 @@ const STAGE_BORDER_COLORS: Record<string, string> = {
 const STATUS_MAP: Record<string, string> = {
   "Lead Nou": "NEW",
   "Contactat": "CONTACTED",
+  "Întâlnire Showroom": "CONTACTED",
+  "Intalnire Showroom": "CONTACTED",
   "Test Drive Programat": "CONTACTED",
   "Test Drive Efectuat": "CONTACTED",
   "Ofertă Trimisă": "NEGOTIATION",
@@ -1780,6 +1784,55 @@ function LeadDetailOverlay({
               })()}
             </div>
 
+            {/* Activity Timeline */}
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Activitate</h3>
+              <div className="flex gap-2">
+                <input
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addComment()}
+                  placeholder="Adaugă un comentariu..."
+                  className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  disabled={sending}
+                />
+                <Button size="sm" onClick={addComment} disabled={sending || !comment.trim()}>
+                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+
+              <div className="space-y-0 mt-2">
+                {lead.activities.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">Nicio activitate încă.</p>
+                ) : lead.activities.map((activity, idx) => {
+                  const isStageChange = activity.type === "STAGE_CHANGE";
+                  const isCreated = activity.type === "CREATED";
+                  const IconMap: Record<string, typeof FileText> = {
+                    CREATED: Plus, NOTE: FileText, CALL: PhoneCall, EMAIL: MailIcon, MEETING: Calendar, STAGE_CHANGE: ArrowRight,
+                  };
+                  const Icon = IconMap[activity.type] || MessageSquare;
+                  return (
+                    <div key={activity.id} className="flex gap-3 relative pb-4">
+                      {idx < lead.activities.length - 1 && <div className="absolute left-[11px] top-6 bottom-0 w-px bg-border" />}
+                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isCreated ? "bg-emerald-100 text-emerald-600" : isStageChange ? "bg-violet-100 text-violet-600" : "bg-muted text-gray-500"}`}>
+                        <Icon className="h-3 w-3" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="text-sm font-medium">{activity.user ? `${activity.user.firstName} ${activity.user.lastName}` : "Sistem"}</span>
+                          <span className="text-sm text-gray-500 shrink-0">{formatDate(activity.createdAt)}</span>
+                        </div>
+                        <p className={`text-sm mt-0.5 ${isStageChange ? "text-violet-700 font-medium" : ""}`}>
+                          {isStageChange && "→ "}{activity.content}
+                        </p>
+                        <span className="text-sm text-gray-500">{ACTIVITY_LABELS[activity.type] || activity.type}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Lead info */}
             <div className="space-y-2">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Lead</h3>
@@ -1944,55 +1997,6 @@ function LeadDetailOverlay({
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-
-            {/* Activity Timeline */}
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Activitate</h3>
-              <div className="flex gap-2">
-                <input
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addComment()}
-                  placeholder="Adaugă un comentariu..."
-                  className="flex-1 rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  disabled={sending}
-                />
-                <Button size="sm" onClick={addComment} disabled={sending || !comment.trim()}>
-                  {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
-              </div>
-
-              <div className="space-y-0 mt-2">
-                {lead.activities.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">Nicio activitate încă.</p>
-                ) : lead.activities.map((activity, idx) => {
-                  const isStageChange = activity.type === "STAGE_CHANGE";
-                  const isCreated = activity.type === "CREATED";
-                  const IconMap: Record<string, typeof FileText> = {
-                    CREATED: Plus, NOTE: FileText, CALL: PhoneCall, EMAIL: MailIcon, MEETING: Calendar, STAGE_CHANGE: ArrowRight,
-                  };
-                  const Icon = IconMap[activity.type] || MessageSquare;
-                  return (
-                    <div key={activity.id} className="flex gap-3 relative pb-4">
-                      {idx < lead.activities.length - 1 && <div className="absolute left-[11px] top-6 bottom-0 w-px bg-border" />}
-                      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${isCreated ? "bg-emerald-100 text-emerald-600" : isStageChange ? "bg-violet-100 text-violet-600" : "bg-muted text-gray-500"}`}>
-                        <Icon className="h-3 w-3" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-sm font-medium">{activity.user ? `${activity.user.firstName} ${activity.user.lastName}` : "Sistem"}</span>
-                          <span className="text-sm text-gray-500 shrink-0">{formatDate(activity.createdAt)}</span>
-                        </div>
-                        <p className={`text-sm mt-0.5 ${isStageChange ? "text-violet-700 font-medium" : ""}`}>
-                          {isStageChange && "→ "}{activity.content}
-                        </p>
-                        <span className="text-sm text-gray-500">{ACTIVITY_LABELS[activity.type] || activity.type}</span>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { prisma } from "@autoerebus/database";
 import { SALES_PIPELINE_STAGES } from "@autoerebus/types";
+import { auth } from "@/lib/auth";
 import SalesClient from "./sales-client";
 
 export const metadata = {
@@ -14,8 +15,26 @@ interface PageProps {
 
 export default async function SalesPage({ searchParams }: PageProps) {
   const params = await searchParams;
-  const brandFilter =
-    params.brand && params.brand !== "ALL" ? params.brand : undefined;
+  const session = await auth();
+  const userRole = (session?.user as { role?: string })?.role;
+  const userBrands = ((session?.user as { brands?: string[] })?.brands as string[]) || [];
+  const isRestricted = userRole !== "SUPER_ADMIN" && userBrands.length > 0;
+
+  // Brand filter logic:
+  // - "ALL" or no brand: show all for unrestricted, or all user's allowed brands for restricted
+  // - Specific brand: show just that one (if user has access)
+  const urlBrand = params.brand && params.brand !== "ALL" ? params.brand : undefined;
+  let brandFilter: string | { in: string[] } | undefined;
+  if (urlBrand) {
+    if (isRestricted && !userBrands.includes(urlBrand)) {
+      // User requested brand they don't have → fallback to their brands
+      brandFilter = { in: userBrands };
+    } else {
+      brandFilter = urlBrand;
+    }
+  } else if (isRestricted) {
+    brandFilter = { in: userBrands };
+  }
 
   let leads: unknown[] = [];
   let stages: unknown[] = [];
@@ -65,7 +84,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
     activeTestDrives = await prisma.testDrive.findMany({
       where: {
         status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
-        ...(brandFilter ? { brand: brandFilter } : {}),
+        ...(brandFilter ? { brand: brandFilter as never } : {}),
       },
       select: {
         id: true,
@@ -82,7 +101,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
     activeShowrooms = await prisma.showroomAppointment.findMany({
       where: {
         status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
-        ...(brandFilter ? { brand: brandFilter } : {}),
+        ...(brandFilter ? { brand: brandFilter as never } : {}),
       },
       select: {
         id: true,
@@ -159,7 +178,7 @@ export default async function SalesPage({ searchParams }: PageProps) {
 
   return (
     <SalesClient
-      key={brandFilter || "ALL"}
+      key={typeof brandFilter === "string" ? brandFilter : "ALL"}
       initialLeads={JSON.parse(JSON.stringify(leads))}
       initialStages={JSON.parse(JSON.stringify(stages))}
       agents={JSON.parse(JSON.stringify(agents))}
