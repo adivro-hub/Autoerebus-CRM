@@ -8,6 +8,7 @@ import { Badge } from "@autoerebus/ui/components/badge";
 import { Plus, Pencil, Eye, EyeOff } from "lucide-react";
 import { auth } from "@/lib/auth";
 import DeleteOfferButton from "./delete-button";
+import RevalidateButton from "./revalidate-button";
 
 const BRAND_COLORS: Record<string, string> = {
   SERVICE: "bg-blue-100 text-blue-700",
@@ -39,12 +40,15 @@ export default async function ServiceOffersPage() {
             Ofertele afișate pe site-urile publice
           </p>
         </div>
-        <Link href="/service/offers/new">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Ofertă nouă
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <RevalidateButton />
+          <Link href="/service/offers/new">
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Ofertă nouă
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {offers.length === 0 ? (
