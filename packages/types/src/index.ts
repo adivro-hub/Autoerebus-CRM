@@ -122,6 +122,10 @@ export const PERMISSIONS = [
   "settings.edit",
   "reports.view",
   "notifications.manage",
+  "service-offers.view",
+  "service-offers.create",
+  "service-offers.edit",
+  "service-offers.delete",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];

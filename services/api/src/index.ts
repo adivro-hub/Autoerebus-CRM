@@ -10,8 +10,14 @@ import { claimRoutes } from "./routes/claims";
 import { testDriveRoutes } from "./routes/test-drives";
 import { dashboardRoutes } from "./routes/dashboard";
 import { authRoutes } from "./routes/auth";
+import {
+  serviceOfferRoutes,
+  externalRouter as serviceOfferExternalRouter,
+} from "./routes/service-offers";
+import { cloudinaryRoutes } from "./routes/cloudinary";
 import { errorHandler } from "./middleware/error-handler";
 import { authMiddleware } from "./middleware/auth";
+import { apiKeyMiddleware } from "./middleware/api-key";
 
 const app = express();
 const PORT = process.env.API_PORT || 4000;
@@ -29,8 +35,17 @@ app.get("/health", (_req, res) => {
 // Public routes
 app.use("/api/auth", authRoutes);
 
+// Public external (x-api-key) routes - for consumer websites
+app.use(
+  "/api/service-offers/external",
+  apiKeyMiddleware,
+  serviceOfferExternalRouter
+);
+
 // Protected routes
 app.use("/api/dashboard", authMiddleware, dashboardRoutes);
+app.use("/api/service-offers", authMiddleware, serviceOfferRoutes);
+app.use("/api/cloudinary", authMiddleware, cloudinaryRoutes);
 app.use("/api/vehicles", authMiddleware, vehicleRoutes);
 app.use("/api/customers", authMiddleware, customerRoutes);
 app.use("/api/leads", authMiddleware, leadRoutes);

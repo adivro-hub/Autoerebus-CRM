@@ -213,6 +213,7 @@ model User {
   demoBookingsCreated DemoBooking[]   @relation("DemoBookingCreatedBy")
   demoBookingsApproved DemoBooking[]  @relation("DemoBookingApprovedBy")
   demoBookingsCancelled DemoBooking[] @relation("DemoBookingCancelledBy")
+  serviceOffers       ServiceOffer[]  @relation("ServiceOfferCreatedBy")
 
   @@index([role])
   @@index([active])
@@ -896,4 +897,27 @@ model AutovitSync {
 
   @@index([vehicleId])
   @@index([status])
+}
+
+// ─── Service Offers / Promotii ───────────────────────────
+// Oferte afisate pe site-urile publice (ex. sectiunea "Oferte Service" pe autoerebus.ro)
+// Administrate din site prin /admin/oferte, stocate central in CRM
+model ServiceOffer {
+  id                String   @id @default(cuid())
+  title             String
+  description       String
+  imageUrl          String
+  imageCloudinaryId String?
+  brand             Brand
+  validityText      String?  // ex: "Martie 2026" sau "01.03.2026 - 15.04.2026"
+  order             Int      @default(0)
+  active            Boolean  @default(true)
+  ctaUrl            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  createdById       String?
+  createdBy         User?    @relation("ServiceOfferCreatedBy", fields: [createdById], references: [id])
+
+  @@index([brand, active, order])
+  @@index([active])
 }
