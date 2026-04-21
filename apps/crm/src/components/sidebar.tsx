@@ -58,7 +58,15 @@ const NAV_ITEMS: NavItem[] = [
       { href: "/demo-bookings", label: "Masini Demo", icon: CarFront },
     ],
   },
-  { href: "/service", label: "Service", icon: Wrench },
+  {
+    href: "/service",
+    label: "Service",
+    icon: Wrench,
+    children: [
+      { href: "/service", label: "Comenzi service", icon: Wrench },
+      { href: "/service/offers", label: "Oferte", icon: Wrench },
+    ],
+  },
   { href: "/claims", label: "Daune", icon: Shield },
   { href: "/customers", label: "Clienti", icon: Users },
   { href: "/users", label: "Utilizatori", icon: UserCog },
