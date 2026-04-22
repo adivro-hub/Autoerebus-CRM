@@ -1440,8 +1440,9 @@ function LeadDetailOverlay({
               {lead.testDrives && lead.testDrives.filter((td) => !["CANCELLED", "NO_SHOW"].includes(td.status)).length > 0 ? (
                 <div className="space-y-2">
                   {lead.testDrives.filter((td) => !["CANCELLED", "NO_SHOW"].includes(td.status)).map((td) => {
-                    const isActive = ["SCHEDULED", "CONFIRMED"].includes(td.status);
+                    const isActive = ["REQUESTED", "SCHEDULED", "CONFIRMED"].includes(td.status);
                     const statusLabel: Record<string, string> = {
+                      REQUESTED: "Solicitare — asteapta confirmare",
                       SCHEDULED: "Neconfirmat",
                       CONFIRMED: "Confirmat",
                       COMPLETED: "Efectuat",
@@ -1449,6 +1450,7 @@ function LeadDetailOverlay({
                       NO_SHOW: "Neprezentare",
                     };
                     const statusColor: Record<string, string> = {
+                      REQUESTED: "bg-amber-100 text-amber-800 ring-1 ring-amber-300",
                       SCHEDULED: "bg-amber-100 text-amber-700",
                       CONFIRMED: "bg-green-100 text-green-700",
                       COMPLETED: "bg-blue-100 text-blue-700",
@@ -1469,6 +1471,23 @@ function LeadDetailOverlay({
                           </div>
                           {isActive && tdReschedulingId !== td.id && (
                             <div className="flex items-center gap-1 shrink-0">
+                              {td.status === "REQUESTED" && (
+                                <button
+                                  onClick={async () => {
+                                    await fetch(`/api/test-drives/${td.id}`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ status: "SCHEDULED" }),
+                                    });
+                                    await fetchLead();
+                                    onLeadUpdated?.();
+                                  }}
+                                  className="rounded-md bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 text-sm flex items-center gap-1"
+                                  title="Accepta solicitarea"
+                                >
+                                  <Check className="h-3 w-3" /> Accepta
+                                </button>
+                              )}
                               {td.status === "SCHEDULED" && (
                                 <button
                                   onClick={() => { setTdConfirmingId(td.id); setTdConfirmAgent(""); }}

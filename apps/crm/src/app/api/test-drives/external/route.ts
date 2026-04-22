@@ -175,12 +175,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Create lead + deal in "Test Drive Programat" pipeline stage
+    // Create lead + deal in "Lead Nou" pipeline stage, and link the
+    // newly-created test drive to it so it shows up everywhere the
+    // lead is rendered (pipeline card, leads tab, lead details).
+    let linkedLeadId: string | null = null;
+
     const existingLead = await prisma.lead.findFirst({
       where: { customerId: customer.id, vehicleId: vehicle.id, status: { not: "LOST" } },
     });
 
-    if (!existingLead) {
+    if (existingLead) {
+      linkedLeadId = existingLead.id;
+    } else {
       const tdLead = await prisma.lead.create({
         data: {
           customerId: customer.id,
@@ -189,20 +195,25 @@ export async function POST(request: NextRequest) {
           type: "TEST_DRIVE",
           brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
           status: "NEW",
-          notes: `[Test Drive] ${model}\nProgramat: ${preferredDate} ${preferredTime}${message ? `\nMesaj: ${message}` : ""}`,
+          notes: `[Test Drive] ${model}\nSolicitat: ${preferredDate} ${preferredTime}${message ? `\nMesaj: ${message}` : ""}`,
         },
       });
+      linkedLeadId = tdLead.id;
 
       const tdStage = await prisma.pipelineStage.findFirst({
         where: { brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE", pipelineType: "SALES", name: "Lead Nou" },
       });
 
       if (tdStage) {
+        const v = await prisma.vehicle.findUnique({
+          where: { id: vehicle.id },
+          select: { price: true, discountPrice: true },
+        });
         await prisma.deal.create({
           data: {
             leadId: tdLead.id,
             stageId: tdStage.id,
-            value: vehicle.id ? (await prisma.vehicle.findUnique({ where: { id: vehicle.id }, select: { price: true, discountPrice: true } }))?.discountPrice ?? (await prisma.vehicle.findUnique({ where: { id: vehicle.id }, select: { price: true } }))?.price ?? null : null,
+            value: v?.discountPrice ?? v?.price ?? null,
             currency: "EUR",
             probability: 30,
             brand: brand as "NISSAN" | "RENAULT" | "AUTORULATE" | "SERVICE",
@@ -213,9 +224,18 @@ export async function POST(request: NextRequest) {
       await prisma.activity.create({
         data: {
           type: "CREATED",
-          content: `Lead creat automat — Test Drive programat via website ${brand}: ${model}`,
+          content: `Lead creat automat — Solicitare test drive via website ${brand}: ${model}`,
           leadId: tdLead.id,
         },
+      }).catch(() => {});
+    }
+
+    // Link the test drive to the lead so UI components that look up
+    // "active test drives" by leadId can find it.
+    if (linkedLeadId) {
+      await prisma.testDrive.update({
+        where: { id: testDrive.id },
+        data: { leadId: linkedLeadId },
       }).catch(() => {});
     }
 
