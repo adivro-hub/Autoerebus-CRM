@@ -37,6 +37,7 @@ export async function POST(request: NextRequest) {
       preferredTime,
       message,
       externalCarId,
+      utm, // { utm_source, utm_medium, utm_campaign, gclid, fbclid, referrer, landing_path }
     } = body;
 
     if (!firstName || !lastName || !phone || !model || !preferredDate || !preferredTime) {
@@ -158,6 +159,21 @@ export async function POST(request: NextRequest) {
     // slot-conflict check so the preferred time is preserved as-is. A
     // confirmed slot is assigned when the manager moves it to SCHEDULED
     // through the admin UI (which re-runs the conflict check there).
+    // Append UTM attribution info to notes so it's visible alongside
+    // the test drive in the dashboard.
+    const utmSummary = utm && typeof utm === "object"
+      ? (() => {
+          const parts: string[] = [];
+          if (utm.utm_source) parts.push(`source: ${utm.utm_source}`);
+          if (utm.utm_medium) parts.push(`medium: ${utm.utm_medium}`);
+          if (utm.utm_campaign) parts.push(`campaign: ${utm.utm_campaign}`);
+          if (utm.gclid) parts.push("Google Ads");
+          if (utm.fbclid) parts.push("Facebook Ads");
+          if (!parts.length && utm.referrer) parts.push(`ref: ${utm.referrer}`);
+          return parts.length ? `\n📊 Tracking: ${parts.join(", ")}` : "";
+        })()
+      : "";
+
     const testDrive = await prisma.testDrive.create({
       data: {
         vehicleId: vehicle.id,
@@ -167,9 +183,9 @@ export async function POST(request: NextRequest) {
         contactName: `${firstName} ${lastName}`,
         contactPhone: phone,
         contactEmail: email || null,
-        notes: message
+        notes: (message
           ? `[Website ${brand}] ${message}`
-          : `[Website ${brand}] Model solicitat: ${model}`,
+          : `[Website ${brand}] Model solicitat: ${model}`) + utmSummary,
         brand,
         status: "REQUESTED",
       },

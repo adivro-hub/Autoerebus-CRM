@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       notes,
       date,
       timeSlot,
+      utm, // { utm_source, utm_medium, utm_campaign, gclid, fbclid, referrer, landing_path }
     } = body;
 
     if (!name || (!phone && !email)) {
@@ -88,7 +89,22 @@ export async function POST(request: NextRequest) {
       ? `${make} ${model}${year ? ` (${year})` : ""}${fuelType ? ` — ${fuelType}` : ""}${vin ? ` — VIN: ${vin}` : ""}`
       : vin ? `VIN: ${vin}` : null;
 
-    const description = [vehicleDesc, notes].filter(Boolean).join("\n");
+    // Append UTM attribution to the description so it's visible in
+     // the dashboard next to the service order.
+    const utmSummary = utm && typeof utm === "object"
+      ? (() => {
+          const parts: string[] = [];
+          if (utm.utm_source) parts.push(`source: ${utm.utm_source}`);
+          if (utm.utm_medium) parts.push(`medium: ${utm.utm_medium}`);
+          if (utm.utm_campaign) parts.push(`campaign: ${utm.utm_campaign}`);
+          if (utm.gclid) parts.push("Google Ads");
+          if (utm.fbclid) parts.push("Facebook Ads");
+          if (!parts.length && utm.referrer) parts.push(`ref: ${utm.referrer}`);
+          return parts.length ? `📊 Tracking: ${parts.join(", ")}` : "";
+        })()
+      : "";
+
+    const description = [vehicleDesc, notes, utmSummary].filter(Boolean).join("\n");
 
     const order = await prisma.serviceOrder.create({
       data: {
