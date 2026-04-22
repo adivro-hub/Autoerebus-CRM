@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
       vehicleMileage,
       subject,
       utm, // UTM tracking data { utm_source, utm_medium, utm_campaign, gclid, fbclid }
+      gdprConsent, // User ticked GDPR consent on the form (boolean)
+      marketingConsent, // User explicitly opted in to marketing (boolean)
     } = body;
 
     // Parse name into first/last if needed
@@ -95,6 +97,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const now = new Date();
     if (!customer) {
       customer = await prisma.customer.create({
         data: {
@@ -104,8 +107,28 @@ export async function POST(request: NextRequest) {
           phone: phone || null,
           source: SOURCE_MAP[brand] || "OTHER",
           type: "INDIVIDUAL",
+          gdprConsent: !!gdprConsent,
+          gdprDate: gdprConsent ? now : null,
+          marketingConsent: !!marketingConsent,
+          marketingConsentDate: marketingConsent ? now : null,
         },
       });
+    } else {
+      // Upgrade consent flags if the user explicitly ticked them on
+      // this submission. We never DOWNGRADE — only the dezabonare
+      // flow does that, through the admin UI.
+      const updates: { gdprConsent?: boolean; gdprDate?: Date; marketingConsent?: boolean; marketingConsentDate?: Date } = {};
+      if (gdprConsent && !customer.gdprConsent) {
+        updates.gdprConsent = true;
+        updates.gdprDate = now;
+      }
+      if (marketingConsent && !customer.marketingConsent) {
+        updates.marketingConsent = true;
+        updates.marketingConsentDate = now;
+      }
+      if (Object.keys(updates).length > 0) {
+        customer = await prisma.customer.update({ where: { id: customer.id }, data: updates });
+      }
     }
 
     // Try to find associated vehicle
