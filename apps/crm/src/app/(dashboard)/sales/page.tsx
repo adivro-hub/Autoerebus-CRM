@@ -83,7 +83,10 @@ export default async function SalesPage({ searchParams }: PageProps) {
 
     activeTestDrives = await prisma.testDrive.findMany({
       where: {
-        status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
+        // Include REQUESTED so the "asteapta confirmare" line shows up
+        // on deal cards for website leads too, not only on already-
+        // scheduled ones.
+        status: { in: ["REQUESTED", "SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
         ...(brandFilter ? { brand: brandFilter as never } : {}),
       },
       select: {

@@ -67,8 +67,14 @@ export async function PATCH(
       }
     }
 
-    // If test drive CONFIRMED, move lead/deal to "Test Drive Programat" and set lead to QUALIFIED
-    if (body.status === "CONFIRMED" && existing.vehicleId) {
+    // When a website request is accepted (REQUESTED → SCHEDULED) or a
+    // test drive is CONFIRMED, move the associated deal to the "Test
+    // Drive Programat" pipeline stage and mark the lead QUALIFIED.
+    const acceptedFromRequest =
+      body.status === "SCHEDULED" && existing.status === "REQUESTED";
+    const confirmed =
+      body.status === "CONFIRMED" && existing.status !== "CONFIRMED";
+    if ((acceptedFromRequest || confirmed) && existing.vehicleId) {
       const lead = await prisma.lead.findFirst({
         where: {
           customerId: existing.customerId,
@@ -111,7 +117,9 @@ export async function PATCH(
             await prisma.activity.create({
               data: {
                 type: "STAGE_CHANGE",
-                content: `Mutat din "${oldStage?.name || "?"}" în "Test Drive Programat" — Test drive confirmat de admin`,
+                content: acceptedFromRequest
+                  ? `Mutat din "${oldStage?.name || "?"}" în "Test Drive Programat" — Solicitare acceptată`
+                  : `Mutat din "${oldStage?.name || "?"}" în "Test Drive Programat" — Test drive confirmat de admin`,
                 leadId: lead.id,
                 dealId: deal.id,
                 userId: session.user.id || null,

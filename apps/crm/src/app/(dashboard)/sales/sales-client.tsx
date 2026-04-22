@@ -494,7 +494,7 @@ function LeadCard({
   const inactivityLevel = getInactivityLevel(lead.createdAt);
   const inactivityRing = getInactivityRing(inactivityLevel);
   const inactivityLabel = getInactivityLabel(inactivityLevel);
-  const [tdAction, setTdAction] = useState<"confirm" | "cancel" | "reschedule" | null>(null);
+  const [tdAction, setTdAction] = useState<"accept" | "confirm" | "cancel" | "reschedule" | null>(null);
   const [tdLoading, setTdLoading] = useState(false);
   const [tdFeedback, setTdFeedback] = useState("");
   const [tdNewDate, setTdNewDate] = useState("");
@@ -513,7 +513,25 @@ function LeadCard({
     if (tdAction === "reschedule" && !tdNewDate) return;
     setTdLoading(true);
     try {
-      if (tdAction === "confirm") {
+      if (tdAction === "accept") {
+        // Website request — accept moves REQUESTED → SCHEDULED. The PATCH
+        // handler on the server also mirrors the deal to "Test Drive
+        // Programat" and marks the lead QUALIFIED, so we don't need to
+        // touch the lead here.
+        await fetch(`/api/test-drives/${testDrive.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "SCHEDULED" }),
+        });
+        await fetch(`/api/leads/${lead.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: `✅ Solicitare test drive acceptată${tdFeedback ? `. ${tdFeedback}` : ""}`,
+            type: "NOTE",
+          }),
+        });
+      } else if (tdAction === "confirm") {
         await fetch(`/api/test-drives/${testDrive.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -597,44 +615,86 @@ function LeadCard({
         {/* Test Drive section */}
         {testDrive && (
           <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between rounded-md bg-green-600 px-3 py-2">
-              <span className="text-sm font-medium text-white">
-                {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} — {new Date(testDrive.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
-              </span>
-              <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                {canApproveTD && (
+            {testDrive.status === "REQUESTED" ? (
+              <div className="flex items-center justify-between rounded-md bg-amber-500 px-3 py-2">
+                <div className="min-w-0 flex flex-col">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-white/80">
+                    Solicitare test drive — asteapta confirmare
+                  </span>
+                  <span className="text-sm font-medium text-white truncate">
+                    Data propusa:{" "}
+                    {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}{" "}
+                    — {new Date(testDrive.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  {canApproveTD && (
+                    <button
+                      onClick={() => { setTdAction("accept"); setTdFeedback(""); }}
+                      className="rounded-md bg-white hover:bg-amber-50 text-amber-600 px-3 py-1 transition-colors flex items-center gap-1"
+                      title="Accepta solicitarea"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span className="text-sm font-medium">Accepta</span>
+                    </button>
+                  )}
                   <button
-                    onClick={() => setTdAction("confirm")}
-                    className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
-                    title="Confirmă programarea"
+                    onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
+                    className="rounded-md bg-amber-700 hover:bg-amber-800 text-white p-1 transition-colors"
+                    title="Reprogrameaza"
                   >
-                    <Check className="h-3.5 w-3.5" />
-                    <span className="text-sm font-medium">Confirmă</span>
+                    <Calendar className="h-3.5 w-3.5" />
                   </button>
-                )}
-                <button
-                  onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
-                  className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
-                  title="Modifică data"
-                >
-                  <Calendar className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  onClick={() => setTdAction("cancel")}
-                  className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
-                  title="Anulează"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                  <button
+                    onClick={() => setTdAction("cancel")}
+                    className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
+                    title="Respinge"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between rounded-md bg-green-600 px-3 py-2">
+                <span className="text-sm font-medium text-white">
+                  {new Date(testDrive.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })} — {new Date(testDrive.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  {canApproveTD && testDrive.status !== "CONFIRMED" && (
+                    <button
+                      onClick={() => setTdAction("confirm")}
+                      className="rounded-md bg-white hover:bg-green-50 text-green-600 px-3 py-1 transition-colors flex items-center gap-1"
+                      title="Confirmă programarea"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                      <span className="text-sm font-medium">Confirmă</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { setTdAction("reschedule"); setTdNewDate(""); setTdFeedback(""); }}
+                    className="rounded-md bg-green-800 hover:bg-green-900 text-white p-1 transition-colors"
+                    title="Modifică data"
+                  >
+                    <Calendar className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setTdAction("cancel")}
+                    className="rounded-md bg-red-600 hover:bg-red-700 text-white p-1 transition-colors"
+                    title="Anulează"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {tdAction && (
               <div className="fixed inset-0 z-[70] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
                 <div className="absolute inset-0 bg-black/50" onClick={() => { setTdAction(null); setTdFeedback(""); setTdNewDate(""); }} />
                 <div className={`relative w-full max-w-md rounded-lg shadow-xl p-5 space-y-4 ${tdAction === "cancel" ? "bg-red-50 border border-red-200" : "bg-white"}`}>
                   <h3 className="text-sm font-semibold">
-                    {tdAction === "confirm" ? "Confirmă programarea test drive"
+                    {tdAction === "accept" ? "Acceptă solicitarea de test drive"
+                      : tdAction === "confirm" ? "Confirmă programarea test drive"
                       : tdAction === "reschedule" ? "Modifică data test drive"
                       : "Anulează test drive"}
                   </h3>
@@ -655,14 +715,15 @@ function LeadCard({
 
                   <div className="space-y-1">
                     <label className="text-sm font-medium text-gray-500">
-                      {tdAction === "confirm" ? "Observații (opțional)"
+                      {tdAction === "accept" ? "Observații (opțional)"
+                        : tdAction === "confirm" ? "Observații (opțional)"
                         : tdAction === "reschedule" ? "Motiv reprogramare (opțional)"
                         : "Motiv anulare *"}
                     </label>
                     <textarea
                       value={tdFeedback}
                       onChange={(e) => setTdFeedback(e.target.value)}
-                      placeholder={tdAction === "confirm" ? "Observații..." : tdAction === "reschedule" ? "De ce se reprogramează..." : "Motiv anulare..."}
+                      placeholder={tdAction === "accept" ? "Observații interne..." : tdAction === "confirm" ? "Observații..." : tdAction === "reschedule" ? "De ce se reprogramează..." : "Motiv anulare..."}
                       className="w-full rounded-md border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                       rows={2}
                       autoFocus={tdAction !== "reschedule"}
@@ -679,11 +740,15 @@ function LeadCard({
                       className={`px-4 py-2 text-sm rounded-md text-white disabled:opacity-50 flex items-center gap-1.5 transition-colors ${
                         tdAction === "cancel" ? "bg-red-600 hover:bg-red-700"
                           : tdAction === "reschedule" ? "bg-blue-600 hover:bg-blue-700"
+                          : tdAction === "accept" ? "bg-amber-600 hover:bg-amber-700"
                           : "bg-emerald-600 hover:bg-emerald-700"
                       }`}
                     >
                       {tdLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                      {tdAction === "confirm" ? "Confirmă" : tdAction === "reschedule" ? "Salvează" : "Anulează TD"}
+                      {tdAction === "accept" ? "Accepta"
+                        : tdAction === "confirm" ? "Confirmă"
+                        : tdAction === "reschedule" ? "Salvează"
+                        : "Anulează TD"}
                     </button>
                   </div>
                 </div>
