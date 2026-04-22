@@ -72,6 +72,7 @@ const STATUS_CONFIG: Record<
   string,
   { label: string; color: string }
 > = {
+  REQUESTED: { label: "Solicitare nouă", color: "bg-amber-100 text-amber-800 ring-1 ring-amber-300" },
   SCHEDULED: { label: "Programat", color: "border-blue-300 bg-blue-50 text-blue-700" },
   CONFIRMED: { label: "Confirmat", color: "bg-green-100 text-green-800" },
   IN_PROGRESS: { label: "In Desfasurare", color: "bg-yellow-100 text-yellow-800" },
@@ -81,6 +82,7 @@ const STATUS_CONFIG: Record<
 };
 
 const STATUS_TRANSITIONS: Record<string, string[]> = {
+  REQUESTED: ["SCHEDULED", "CANCELLED"],
   SCHEDULED: ["CONFIRMED", "CANCELLED", "NO_SHOW"],
   CONFIRMED: ["IN_PROGRESS", "CANCELLED", "NO_SHOW"],
   IN_PROGRESS: ["COMPLETED"],
@@ -211,16 +213,23 @@ export default function TestDrivesClient({
     });
   }, [testDrives, search, filterStatus, filterAgent]);
 
+  const requested = useMemo(
+    () => filteredTestDrives.filter((td) => td.status === "REQUESTED"),
+    [filteredTestDrives]
+  );
+
   const unconfirmed = useMemo(
     () => filteredTestDrives.filter((td) => td.status === "SCHEDULED"),
     [filteredTestDrives]
   );
 
-  // Count test drives per day for calendar (use filtered)
+  // Count test drives per day for calendar (use filtered).
+  // REQUESTED ones are just requests — they don't hold a calendar slot
+  // until a manager moves them to SCHEDULED, so we exclude them here.
   const countsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
     filteredTestDrives.forEach((td) => {
-      if (td.status === "CANCELLED" || td.status === "NO_SHOW") return;
+      if (td.status === "CANCELLED" || td.status === "NO_SHOW" || td.status === "REQUESTED") return;
       const key = toLocalDateStr(td.scheduledAt);
       counts[key] = (counts[key] || 0) + 1;
     });
@@ -531,6 +540,7 @@ export default function TestDrivesClient({
           className="rounded-md border border-input bg-background px-3 py-2 text-sm text-gray-900"
         >
           <option value="ALL">Toate statusurile</option>
+          <option value="REQUESTED">Solicitare nouă</option>
           <option value="SCHEDULED">Programat</option>
           <option value="CONFIRMED">Confirmat</option>
           <option value="IN_PROGRESS">În desfășurare</option>
@@ -575,6 +585,100 @@ export default function TestDrivesClient({
           </Button>
         )}
       </div>
+
+      {/* ═══ SECTION 0: New requests from the website (REQUESTED) ═══ */}
+      {requested.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Bell className="h-5 w-5 text-amber-500" />
+            <h2 className="text-base font-semibold">Solicitari noi de pe site</h2>
+            <Badge className="bg-amber-100 text-amber-800">{requested.length}</Badge>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {requested.map((td) => (
+              <Card key={td.id} className="hover:shadow-md transition-shadow ring-1 ring-amber-200">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setSelectedCustomerId(td.customerId)}
+                      className="flex items-center gap-1.5 text-sm font-medium text-gray-900 hover:underline"
+                    >
+                      <User className="h-3.5 w-3.5 text-gray-400" />
+                      {td.contactName || `${td.customer.firstName} ${td.customer.lastName}`}
+                    </button>
+                    <div className="flex items-center gap-1">
+                      <span className="inline-flex rounded-full px-2 py-0.5 text-sm font-medium bg-amber-100 text-amber-800">
+                        Solicitare noua
+                      </span>
+                      <span className="inline-flex rounded-full border border-gray-900 px-2 py-0.5 text-sm font-medium text-gray-900">
+                        {td.brand}
+                      </span>
+                    </div>
+                  </div>
+
+                  {td.vehicle && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <Link
+                        href={`/inventory/${td.vehicle.id}/edit`}
+                        className="flex items-center gap-1.5 text-sm truncate hover:underline"
+                        style={{ color: "#333" }}
+                      >
+                        <Car className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                        {td.vehicle.make.name} {td.vehicle.model.name} ({td.vehicle.year})
+                      </Link>
+                    </div>
+                  )}
+
+                  <p className="mt-2 text-sm text-gray-700">
+                    <span className="text-gray-500">Data preferata:</span>{" "}
+                    <span className="font-medium">
+                      {new Date(td.scheduledAt).toLocaleDateString("ro-RO", { day: "numeric", month: "long", year: "numeric" })}
+                      {" — "}
+                      {new Date(td.scheduledAt).toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </p>
+                  {td.contactPhone && (
+                    <p className="text-sm text-gray-700">
+                      <span className="text-gray-500">Telefon:</span> <a href={`tel:${td.contactPhone}`} className="hover:underline">{td.contactPhone}</a>
+                    </p>
+                  )}
+                  {td.notes && (
+                    <p className="mt-2 text-sm text-gray-500 italic">{td.notes}</p>
+                  )}
+
+                  {canApproveTD && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        onClick={() => handleStatusChange(td.id, "SCHEDULED")}
+                        className="flex-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white px-3 py-2 transition-colors flex items-center justify-center gap-1.5 text-sm font-medium"
+                        title="Accepta cererea"
+                      >
+                        <Check className="h-4 w-4" />
+                        Accepta
+                      </button>
+                      <button
+                        onClick={() => openReschedule(td)}
+                        className="rounded-md bg-amber-100 hover:bg-amber-200 text-amber-800 px-3 py-2 transition-colors flex items-center gap-1.5 text-sm"
+                        title="Reprogrameaza"
+                      >
+                        <Calendar className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(td.id, "CANCELLED")}
+                        className="rounded-md bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 transition-colors flex items-center gap-1.5 text-sm"
+                        title="Respinge"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ═══ SECTION 1: Unconfirmed ═══ */}
       {unconfirmed.length > 0 && (

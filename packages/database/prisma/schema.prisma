@@ -119,7 +119,8 @@ enum ClaimStatus {
 }
 
 enum TestDriveStatus {
-  SCHEDULED
+  REQUESTED    // Website lead — waits for manager confirmation
+  SCHEDULED    // Slot reserved on calendar (manager-created or confirmed)
   CONFIRMED
   IN_PROGRESS
   COMPLETED

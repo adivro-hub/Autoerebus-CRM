@@ -153,31 +153,11 @@ export async function POST(request: NextRequest) {
     const offset = tzName.includes("3") || tzName === "EEST" ? "+03:00" : "+02:00";
     const scheduledAt = new Date(`${preferredDate}T${preferredTime}:00${offset}`);
 
-    // Check for conflicts: 1h block (30 min TD + 30 min buffer)
-    const BLOCK_MINUTES = 60;
-    const conflict = await prisma.testDrive.findFirst({
-      where: {
-        vehicleId: vehicle.id,
-        status: { in: ["SCHEDULED", "CONFIRMED", "IN_PROGRESS"] },
-        scheduledAt: {
-          gte: new Date(scheduledAt.getTime() - BLOCK_MINUTES * 60 * 1000),
-          lt: new Date(scheduledAt.getTime() + BLOCK_MINUTES * 60 * 1000),
-        },
-      },
-    });
-
-    if (conflict) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Acest interval orar nu este disponibil. Vă rugăm alegeți altă oră.",
-          customerId: customer.id,
-        },
-        { status: 409 }
-      );
-    }
-
-    // Create the test drive
+    // Website requests don't block the calendar — a manager must confirm
+    // first. We create the test drive with status REQUESTED and skip the
+    // slot-conflict check so the preferred time is preserved as-is. A
+    // confirmed slot is assigned when the manager moves it to SCHEDULED
+    // through the admin UI (which re-runs the conflict check there).
     const testDrive = await prisma.testDrive.create({
       data: {
         vehicleId: vehicle.id,
@@ -191,17 +171,9 @@ export async function POST(request: NextRequest) {
           ? `[Website ${brand}] ${message}`
           : `[Website ${brand}] Model solicitat: ${model}`,
         brand,
-        status: "SCHEDULED",
+        status: "REQUESTED",
       },
     });
-
-    // Mark any conflicting demo bookings and notify
-    handleTestDriveConflictWithDemoBookings(
-      testDrive.id,
-      vehicle.id,
-      scheduledAt,
-      30
-    ).catch((e) => console.error("[TD conflict check] error:", e));
 
     // Create lead + deal in "Test Drive Programat" pipeline stage
     const existingLead = await prisma.lead.findFirst({
