@@ -73,10 +73,10 @@ export default async function InventoryPage({ searchParams }: PageProps) {
     externalSlug: string | null;
     createdAt: Date;
     updatedAt: Date;
+    availableTestDrive: boolean;
     images: { url: string }[];
     make: { name: string; slug: string };
     model: { name: string; slug: string };
-    agent: { firstName: string; lastName: string } | null;
   }> = [];
   let total = 0;
 
@@ -87,7 +87,6 @@ export default async function InventoryPage({ searchParams }: PageProps) {
         include: {
           make: { select: { name: true, slug: true } },
           model: { select: { name: true, slug: true } },
-          agent: { select: { firstName: true, lastName: true } },
           images: {
             take: 1,
             orderBy: { order: "asc" },

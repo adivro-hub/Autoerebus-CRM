@@ -8,7 +8,7 @@ import { Badge } from "@autoerebus/ui/components/badge";
 import { Button } from "@autoerebus/ui/components/button";
 import { formatCurrency } from "@autoerebus/ui/lib/utils";
 import { FUEL_TYPE_LABELS } from "@autoerebus/types";
-import { Pencil, Trash2, AlertTriangle, Loader2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Pencil, Trash2, AlertTriangle, Loader2, ExternalLink, ArrowUpDown, ArrowUp, ArrowDown, X, Check } from "lucide-react";
 
 const STATUS_LABELS: Record<
   string,
@@ -36,10 +36,10 @@ interface Vehicle {
   externalSlug: string | null;
   createdAt: string | Date;
   updatedAt: string | Date;
+  availableTestDrive?: boolean;
   images?: { url: string }[];
   make: { name: string; slug: string };
   model: { name: string; slug: string };
-  agent: { firstName: string; lastName: string } | null;
 }
 
 type SortColumn = "vehicle" | "brand" | "mileage" | "price" | "status" | "createdAt" | "updatedAt";
@@ -76,6 +76,33 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
   const [sortCol, setSortCol] = useState<SortColumn>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const deletingVehicle = vehicles.find((v) => v.id === deleteId);
+
+  // Local copy of TD availability so the cell updates instantly without a full refetch
+  const [tdState, setTdState] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(vehicles.map((v) => [v.id, v.availableTestDrive ?? false]))
+  );
+  const [tdEditId, setTdEditId] = useState<string | null>(null);
+  const [tdSaving, setTdSaving] = useState(false);
+
+  async function saveTdAvailability(vehicleId: string, available: boolean) {
+    setTdSaving(true);
+    try {
+      const res = await fetch(`/api/vehicles/${vehicleId}/test-drive-availability`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ availableTestDrive: available }),
+      });
+      if (res.ok) {
+        setTdState((prev) => ({ ...prev, [vehicleId]: available }));
+      }
+    } catch {
+      // ignore
+    }
+    setTdSaving(false);
+    setTdEditId(null);
+  }
+
+  const tdEditingVehicle = vehicles.find((v) => v.id === tdEditId);
 
   function toggleSort(col: SortColumn) {
     if (sortCol === col) {
@@ -186,7 +213,7 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                   Status <SortIcon col="status" />
                 </button>
               </th>
-              <th className="px-4 py-3 text-left font-medium">Agent</th>
+              <th className="px-4 py-3 text-left font-medium">Test Drive</th>
               <th className="px-4 py-3 text-left font-medium">
                 <button onClick={() => toggleSort("createdAt")} className="flex items-center hover:text-gray-900">
                   Adăugat <SortIcon col="createdAt" />
@@ -267,10 +294,28 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
                       {statusInfo.label}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {vehicle.agent
-                      ? `${vehicle.agent.firstName} ${vehicle.agent.lastName}`
-                      : "-"}
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    {(() => {
+                      const available = tdState[vehicle.id] ?? false;
+                      return (
+                        <button
+                          onClick={() => setTdEditId(vehicle.id)}
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm font-medium transition-colors hover:opacity-80 ${
+                            available
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                          title="Modifică disponibilitatea pentru test drive"
+                        >
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              available ? "bg-green-500" : "bg-gray-400"
+                            }`}
+                          />
+                          {available ? "Da" : "Nu"}
+                        </button>
+                      );
+                    })()}
                   </td>
                   <td
                     className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap"
@@ -333,6 +378,73 @@ export function InventoryTable({ vehicles }: InventoryTableProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Test Drive Availability Modal */}
+      {tdEditId && tdEditingVehicle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => !tdSaving && setTdEditId(null)}
+        >
+          <div
+            className="mx-4 w-full max-w-md rounded-lg bg-background p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-base font-semibold">Disponibilitate Test Drive</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {tdEditingVehicle.make.name} {tdEditingVehicle.model.name} ({tdEditingVehicle.year})
+                </p>
+              </div>
+              <button
+                onClick={() => !tdSaving && setTdEditId(null)}
+                className="rounded-md p-1 hover:bg-muted"
+                disabled={tdSaving}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="mt-4 text-sm text-gray-700">
+              Această mașină este disponibilă pentru test drive?
+            </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => saveTdAvailability(tdEditId, true)}
+                disabled={tdSaving}
+                className={`flex items-center justify-center gap-2 rounded-md border-2 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  tdState[tdEditId]
+                    ? "border-green-500 bg-green-50 text-green-700"
+                    : "border-gray-200 hover:border-green-400 hover:bg-green-50"
+                }`}
+              >
+                <Check className="h-4 w-4" />
+                Da, disponibilă
+              </button>
+              <button
+                onClick={() => saveTdAvailability(tdEditId, false)}
+                disabled={tdSaving}
+                className={`flex items-center justify-center gap-2 rounded-md border-2 px-4 py-3 text-sm font-medium transition-colors disabled:opacity-50 ${
+                  !tdState[tdEditId]
+                    ? "border-gray-500 bg-gray-50 text-gray-700"
+                    : "border-gray-200 hover:border-gray-400 hover:bg-gray-50"
+                }`}
+              >
+                <X className="h-4 w-4" />
+                Nu, indisponibilă
+              </button>
+            </div>
+
+            {tdSaving && (
+              <div className="mt-3 flex items-center justify-center gap-2 text-sm text-gray-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Se salvează...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteId && (
