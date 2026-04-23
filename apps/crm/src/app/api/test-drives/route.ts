@@ -177,6 +177,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Block TD if vehicle is on an active demo booking that overlaps this slot.
+    // Demo booking takes priority over test drive.
+    if (!adminOverride) {
+      const demoConflict = await prisma.demoBooking.findFirst({
+        where: {
+          vehicleId,
+          status: { in: ["APPROVED", "PENDING"] },
+          startDate: { lt: endDate },
+          endDate: { gt: scheduledDate },
+        },
+        select: { startDate: true, endDate: true },
+      });
+
+      if (demoConflict) {
+        return NextResponse.json(
+          {
+            error: "Mașina este rezervată pentru demo în acest interval. Test drive-ul nu poate fi programat.",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const testDrive = await prisma.testDrive.create({
       data: {
         vehicleId,

@@ -125,15 +125,28 @@ export async function GET(request: NextRequest) {
       select: { scheduledAt: true, duration: true },
     });
 
+    // Get active demo bookings that cover this day.
+    // If the vehicle is out on demo during a slot, that slot is unavailable.
+    const activeDemoBookings = await prisma.demoBooking.findMany({
+      where: {
+        vehicleId: resolvedVehicleId,
+        status: { in: ["APPROVED", "PENDING"] },
+        startDate: { lte: endOfDay },
+        endDate: { gte: startOfDay },
+      },
+      select: { startDate: true, endDate: true },
+    });
+
     // Generate all slots and mark unavailable ones
     const allSlots = generateAllSlots();
     const slots = allSlots.map((time) => {
       const slotStart = new Date(`${date}T${time}:00${tz}`);
       const slotStartMs = slotStart.getTime();
+      const slotEndMs = slotStartMs + SLOT_DURATION * 60 * 1000;
 
       // Check if this slot conflicts with any existing test drive
       // A slot is unavailable if it's within TOTAL_BLOCK (60 min) of an existing TD
-      const isBlocked = existingTDs.some((td: { scheduledAt: Date; duration: number | null }) => {
+      const isBlockedByTD = existingTDs.some((td: { scheduledAt: Date; duration: number | null }) => {
         const tdStart = new Date(td.scheduledAt).getTime();
         const tdDuration = td.duration || SLOT_DURATION;
         const tdBlock = tdDuration + BUFFER; // total blocked time
@@ -144,6 +157,15 @@ export async function GET(request: NextRequest) {
 
         return slotStartMs >= blockStart && slotStartMs < blockEnd;
       });
+
+      // Blocked by demo booking if the slot overlaps the booking window
+      const isBlockedByDemo = activeDemoBookings.some((b) => {
+        const bStart = new Date(b.startDate).getTime();
+        const bEnd = new Date(b.endDate).getTime();
+        return slotStartMs < bEnd && slotEndMs > bStart;
+      });
+
+      const isBlocked = isBlockedByTD || isBlockedByDemo;
 
       // Also check if slot is in the past (for today)
       const now = new Date();
