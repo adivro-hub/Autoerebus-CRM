@@ -492,6 +492,8 @@ model Lead {
   brand       Brand
   status      LeadStatus @default(NEW)
   assignedToId String?
+  assignedAt   DateTime? // When the lead was last assigned to an agent (for SLA tracking)
+  slaReminderSentAt DateTime? // When the 30-min SLA reminder was last sent (prevents duplicates)
   priority     Int       @default(0) // 0=normal, 1=high, 2=urgent
   notes       String?
   adminNotes  String?

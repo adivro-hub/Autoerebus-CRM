@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
 import { handleTestDriveConflictWithDemoBookings } from "@/lib/demo-booking-trigger";
+import { notifyManagersNewLead, notifyAgentLeadAssigned } from "@/lib/notifications/lead-notifications";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
         // Managers/admins leave it unassigned so a manager can dispatch it.
         assignedToId: assignedToId
           || ((session.user as { role?: string })?.role === "AGENT" ? session.user.id : null),
+        assignedAt: (assignedToId || (session.user as { role?: string })?.role === "AGENT") ? new Date() : null,
       },
     });
 
@@ -211,6 +213,47 @@ export async function POST(request: NextRequest) {
           userId: session.user.id || null,
         },
       }).catch(() => {});
+    }
+
+    // Determine actual final assignedToId (post auto-assign for AGENT)
+    const sessionRole = (session.user as { role?: string })?.role;
+    const finalAssignedToId = assignedToId
+      || (sessionRole === "AGENT" ? session.user.id : null);
+
+    // Customer name + vehicle title for notifications
+    const custName = `${customer.firstName} ${customer.lastName}`;
+    const vehicleForNotif = lead.vehicleId
+      ? await prisma.vehicle.findUnique({
+          where: { id: lead.vehicleId },
+          select: { make: { select: { name: true } }, model: { select: { name: true } }, year: true },
+        }).catch(() => null)
+      : null;
+    const vehicleTitle = vehicleForNotif
+      ? `${vehicleForNotif.make.name} ${vehicleForNotif.model.name} (${vehicleForNotif.year})`
+      : null;
+
+    if (finalAssignedToId) {
+      // Lead has agent → notify the agent (30 min SLA)
+      notifyAgentLeadAssigned({
+        leadId: lead.id,
+        agentId: finalAssignedToId,
+        brand,
+        customerName: custName,
+        type: lead.type,
+        vehicleTitle,
+        assignedByName: session.user.name || undefined,
+      }).catch((e) => console.error("[Notify agent assigned] error:", e));
+    } else {
+      // No agent yet (admin/manager created without picking) → notify managers
+      notifyManagersNewLead({
+        leadId: lead.id,
+        brand,
+        customerName: custName,
+        source: lead.source,
+        type: lead.type,
+        vehicleTitle,
+        notes: lead.notes,
+      }).catch((e) => console.error("[Notify managers] error:", e));
     }
 
     return NextResponse.json({ success: true, data: lead });

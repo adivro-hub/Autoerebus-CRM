@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@autoerebus/database";
+import { notifyManagersNewLead } from "@/lib/notifications/lead-notifications";
 
 // Public endpoint - no auth required, uses API key
 // Accepts leads/inquiries from external websites (Nissan, Renault, Autorulate, Daune)
@@ -244,6 +245,17 @@ export async function POST(request: NextRequest) {
         details: `Lead nou via website ${brand}: ${fName} ${lName} - ${TYPE_LABELS[type] || type || "Cerere"}${carTitle ? ` - ${carTitle}` : ""}`,
       },
     }).catch(() => {});
+
+    // Notify all managers of this brand (async, don't block response)
+    notifyManagersNewLead({
+      leadId: lead.id,
+      brand: BRAND_MAP[brand],
+      customerName: `${fName} ${lName}`,
+      source: lead.source,
+      type: lead.type,
+      vehicleTitle: carTitle || null,
+      notes: notesParts.join("\n") || null,
+    }).catch((e) => console.error("[Notify managers] error:", e));
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@autoerebus/database";
+import { notifyAgentLeadAssigned } from "@/lib/notifications/lead-notifications";
 
 // GET - full lead details with activities
 export async function GET(
@@ -109,8 +110,17 @@ export async function PATCH(
     // Update lead status
     const updateData: Record<string, unknown> = {};
     if (status) updateData.status = status;
-    if (assignedToId !== undefined)
+    if (assignedToId !== undefined) {
       updateData.assignedToId = assignedToId || null;
+      // Stamp assignment time whenever agent changes (reset SLA reminder flag too)
+      if (assignedToId && assignedToId !== lead.assignedToId) {
+        updateData.assignedAt = new Date();
+        updateData.slaReminderSentAt = null;
+      } else if (!assignedToId) {
+        updateData.assignedAt = null;
+        updateData.slaReminderSentAt = null;
+      }
+    }
     if (notes !== undefined) updateData.notes = notes;
     if (priority !== undefined) updateData.priority = priority;
     if (lostReason !== undefined) updateData.lostReason = lostReason;
@@ -124,6 +134,40 @@ export async function PATCH(
       where: { id },
       data: updateData,
     });
+
+    // Notify the agent if assignment changed (assignedToId provided + different from before + non-null)
+    if (
+      assignedToId !== undefined &&
+      assignedToId &&
+      assignedToId !== lead.assignedToId
+    ) {
+      const customerForNotif = await prisma.customer.findUnique({
+        where: { id: lead.customerId },
+        select: { firstName: true, lastName: true },
+      }).catch(() => null);
+      const vehicleForNotif = lead.vehicleId
+        ? await prisma.vehicle.findUnique({
+            where: { id: lead.vehicleId },
+            select: { make: { select: { name: true } }, model: { select: { name: true } }, year: true },
+          }).catch(() => null)
+        : null;
+      const vehicleTitle = vehicleForNotif
+        ? `${vehicleForNotif.make.name} ${vehicleForNotif.model.name} (${vehicleForNotif.year})`
+        : null;
+      const customerName = customerForNotif
+        ? `${customerForNotif.firstName} ${customerForNotif.lastName}`
+        : "Client";
+
+      notifyAgentLeadAssigned({
+        leadId: id,
+        agentId: assignedToId,
+        brand: lead.brand,
+        customerName,
+        type: lead.type,
+        vehicleTitle,
+        assignedByName: session.user.name || undefined,
+      }).catch((e) => console.error("[Notify agent assigned] error:", e));
+    }
 
     // If pipelineStageId is provided, create or move a deal
     console.log("[PATCH Lead]", id, "body:", JSON.stringify(body), "pipelineStageId:", pipelineStageId);
